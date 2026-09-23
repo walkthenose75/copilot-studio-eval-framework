@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Copilot Studio Agent Evaluation Framework</title>
+<meta name="description" content="A vendor-neutral reference framework for evaluating Microsoft Copilot Studio agents — standardized test sets, automated grading, CI/CD quality gates, a Dataverse results repository, and Power BI governance reporting.">
+<link rel="canonical" href="https://walkthenose75.github.io/copilot-studio-eval-framework/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Copilot Studio Agent Evaluation Framework">
+<meta property="og:description" content="Turn Copilot Studio agent evaluation into a repeatable, auditable enterprise quality gate. Full briefing and open-source starter pack.">
+<meta property="og:url" content="https://walkthenose75.github.io/copilot-studio-eval-framework/">
+<style>
+  :root{
+    --bg:#0b1020; --panel:#121a2f; --panel2:#0f1730; --ink:#e8ecf6; --mut:#9aa6c4;
+    --line:#243154; --brand:#5b8cff; --brand2:#7c5cff; --ok:#31c48d; --chip:#1a2440;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{
+    background:radial-gradient(1200px 600px at 70% -10%, #1a2340 0, transparent 60%),
+               radial-gradient(1000px 500px at -10% 10%, #17204a 0, transparent 55%), var(--bg);
+    color:var(--ink); font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:960px; margin:0 auto; padding:40px 22px 64px}
+  .eyebrow{display:inline-block; letter-spacing:.14em; text-transform:uppercase; font-size:12px;
+    color:var(--mut); border:1px solid var(--line); background:var(--chip); padding:6px 12px; border-radius:999px}
+  h1{font-size:clamp(30px,5vw,46px); line-height:1.1; margin:18px 0 10px; letter-spacing:-.02em}
+  .grad{background:linear-gradient(90deg,var(--brand),var(--brand2)); -webkit-background-clip:text; background-clip:text; color:transparent}
+  .lede{font-size:clamp(17px,2.4vw,20px); color:#c8d2ee; max-width:70ch; margin:0 0 26px}
+  .cta{display:flex; flex-wrap:wrap; gap:12px; margin:26px 0 8px}
+  .btn{display:inline-flex; align-items:center; gap:9px; text-decoration:none; font-weight:600;
+    padding:13px 20px; border-radius:12px; border:1px solid var(--line); transition:transform .06s ease, border-color .2s}
+  .btn:hover{transform:translateY(-1px)}
+  .btn.primary{background:linear-gradient(90deg,var(--brand),var(--brand2)); color:#fff; border-color:transparent}
+  .btn.ghost{background:var(--panel); color:var(--ink)}
+  .btn small{display:block; font-weight:400; font-size:12px; color:rgba(255,255,255,.75)}
+  .btn.ghost small{color:var(--mut)}
+  section{margin-top:44px}
+  h2{font-size:14px; letter-spacing:.12em; text-transform:uppercase; color:var(--mut); margin:0 0 16px}
+  .grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:14px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2)); border:1px solid var(--line);
+    border-radius:14px; padding:18px}
+  .card h3{margin:0 0 6px; font-size:16px}
+  .card p{margin:0; color:var(--mut); font-size:14.5px}
+  .note{background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--brand);
+    border-radius:10px; padding:16px 18px; color:#cdd6f0; font-size:14.5px}
+  .note strong{color:#fff}
+  footer{margin-top:52px; padding-top:22px; border-top:1px solid var(--line); color:var(--mut); font-size:14px}
+  footer a{color:var(--brand); text-decoration:none}
+  footer a:hover{text-decoration:underline}
+  .dot{opacity:.5; padding:0 8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="eyebrow">Reference framework · Microsoft Copilot Studio</span>
+  <h1>Copilot Studio Agent<br><span class="grad">Evaluation Framework</span></h1>
+  <p class="lede">A vendor-neutral, production-oriented blueprint for turning Copilot Studio agent
+  evaluation into a <strong>repeatable, auditable enterprise quality gate</strong> — standardized test
+  sets, automated grading, CI/CD release gates, a Dataverse results repository, and Power BI governance
+  reporting, with a runnable open-source starter pack.</p>
+
+  <div class="cta">
+    <a class="btn primary" href="https://walkthenose75.github.io/copilot-studio-eval-framework/">
+      Read the full briefing <small>16-section executive briefing (GitHub Pages)</small>
+    </a>
+    <a class="btn ghost" href="https://github.com/walkthenose75/copilot-studio-eval-framework">
+      Get the code on GitHub <small>Repo + runnable starter pack</small>
+    </a>
+  </div>
+
+  <section>
+    <h2>What's inside</h2>
+    <div class="grid">
+      <div class="card"><h3>Standardized test sets</h3><p>Multi-method single-response test cases with a
+        documented import format and retention rules.</p></div>
+      <div class="card"><h3>Automated grading &amp; gate</h3><p>Per-case pass/fail plus aggregate scores,
+        wired into an objective quality gate with a clear pass/fail contract.</p></div>
+      <div class="card"><h3>CI/CD release gates</h3><p>GitHub Actions / Azure DevOps patterns: deploy →
+        evaluate → promote on pass, plus scheduled drift detection.</p></div>
+      <div class="card"><h3>Dataverse results repository</h3><p>A schema for persisting every run so
+        quality is queryable, auditable, and trend-able over time.</p></div>
+      <div class="card"><h3>Power BI governance reporting</h3><p>Turn stored results into estate-wide
+        quality and drift dashboards for owners and reviewers.</p></div>
+      <div class="card"><h3>Runnable starter pack</h3><p>A Python eval runner, test seeds, YAML
+        workflows and a pytest suite — clone it, point it at an agent, and gate the same day.</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Good to know</h2>
+    <div class="note">
+      <strong>Standard-harness, response-level, and future-proof.</strong> The framework targets the
+      Copilot Studio <em>standard harness</em>, where agent evaluation is automatable today via the
+      Power Platform REST API and connector actions. The approach is response-level rather than
+      harness-specific, so the same gate logic and results schema carry over as the newer agent
+      experience reaches method and API parity.
+      <br><br>
+      <strong>Reference implementation, not an official product.</strong> This is a personal reference
+      framework — not an official Microsoft product and not a tenant-verified deployment. The runner was
+      exercised end to end against a <em>mock</em> of the documented API surface; response field names
+      and status tokens are written defensively but not yet verified against a live tenant. A one-time
+      shakeout closes that gap. See the repo's <code>PROVENANCE</code> and <code>SHAKEDOWN</code> notes
+      for exactly what has and has not been validated.
+    </div>
+  </section>
+
+  <footer>
+    <a href="https://github.com/walkthenose75/copilot-studio-eval-framework">GitHub repository</a>
+    <span class="dot">·</span>
+    <a href="https://walkthenose75.github.io/copilot-studio-eval-framework/">Full briefing</a>
+    <span class="dot">·</span>
+    MIT licensed
+  </footer>
+
+</div>
+</body>
+</html>
