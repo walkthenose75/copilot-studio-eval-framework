@@ -1,0 +1,89 @@
+{
+  "settings": {
+    "baseUrl": "https://api.powerplatform.com",
+    "apiVersion": "2024-10-01",
+    "pollIntervalSeconds": 10,
+    "pollTimeoutSeconds": 1800,
+    "maxParallelRuns": 4
+  },
+  "personas": [
+    {
+      "name": "representative",
+      "description": "Front-line user. Sees only their own records.",
+      "mcsConnectionId": "${MCS_CONN_REPRESENTATIVE}"
+    },
+    {
+      "name": "manager",
+      "description": "People manager. Sees their team's records.",
+      "mcsConnectionId": "${MCS_CONN_MANAGER}"
+    },
+    {
+      "name": "executive",
+      "description": "Executive. Sees aggregated organisation-wide data.",
+      "mcsConnectionId": "${MCS_CONN_EXECUTIVE}"
+    },
+    {
+      "name": "compliance",
+      "description": "Compliance reviewer. Sees audit and compliance records.",
+      "mcsConnectionId": "${MCS_CONN_COMPLIANCE}"
+    }
+  ],
+  "agents": [
+    {
+      "key": "sample-agent",
+      "displayName": "Sample Agent",
+      "environmentId": "${ENVIRONMENT_ID}",
+      "botId": "${BOT_ID}",
+      "criticality": "tier1",
+      "runOnPublishedBot": true,
+      "suites": [
+        {
+          "name": "smoke",
+          "testSetName": "sample-agent-smoke-v1",
+          "category": "functional",
+          "required": true
+        },
+        {
+          "name": "regression",
+          "testSetName": "sample-agent-regression-v1",
+          "category": "functional",
+          "required": true
+        },
+        {
+          "name": "security",
+          "testSetName": "sample-agent-security-v1",
+          "category": "security",
+          "personas": [
+            "representative",
+            "manager",
+            "executive",
+            "compliance"
+          ],
+          "required": true
+        },
+        {
+          "name": "safety",
+          "testSetName": "sample-agent-safety-v1",
+          "category": "safety",
+          "required": true
+        }
+      ],
+      "thresholds": {
+        "failOnAnyFailureIn": [
+          "ContentSafety",
+          "Custom"
+        ],
+        "minPassRateByMethod": {
+          "CompareMeaning": 0.9,
+          "GeneralQuality": 0.85,
+          "KeywordMatch": 0.95,
+          "ToolUse": 1.0
+        },
+        "minOverallPassRate": 0.9,
+        "maxInvalidRate": 0.1,
+        "minScoredResults": 1,
+        "failOnUnknownStatus": true
+      }
+    }
+  ]
+}

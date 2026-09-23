@@ -1,0 +1,117 @@
+# Azure DevOps equivalent of the GitHub release gate.
+# Use this if your ALM lives in Azure DevOps rather than GitHub.
+#
+# Variable group 'copilot-eval' should contain:
+#   PP_TENANT_ID, PP_CLIENT_ID, PP_CLIENT_SECRET (secret),
+#   UAT_URL, UAT_ENV_ID, PROD_URL, BOT_ID_UAT, DATAVERSE_URL
+#
+# The Power Platform Build Tools extension provides the deployment tasks:
+#   https://marketplace.visualstudio.com/items?itemName=microsoft-IsvExpTools.PowerPlatform-BuildTools
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include:
+      - solutions/*
+      - testsets/*
+
+pool:
+  vmImage: ubuntu-latest
+
+variables:
+  - group: copilot-eval
+  - name: solutionName
+    value: AgentSolution
+  - name: dataversePrefix
+    value: cse            # override to match the prefix you provisioned with
+
+stages:
+  - stage: DeployUAT
+    displayName: Deploy to UAT
+    jobs:
+      - job: Deploy
+        steps:
+          - task: PowerPlatformToolInstaller@2
+
+          - task: PowerPlatformPackSolution@2
+            inputs:
+              SolutionSourceFolder: solutions/$(solutionName)
+              SolutionOutputFile: $(Build.ArtifactStagingDirectory)/$(solutionName)_managed.zip
+              SolutionType: Managed
+
+          - task: PowerPlatformImportSolution@2
+            inputs:
+              authenticationType: PowerPlatformSPN
+              PowerPlatformSPN: $(UAT_URL)
+              SolutionInputFile: $(Build.ArtifactStagingDirectory)/$(solutionName)_managed.zip
+              PublishCustomizationChanges: true
+
+          - publish: $(Build.ArtifactStagingDirectory)
+            artifact: solution
+
+  - stage: Evaluate
+    displayName: Evaluation quality gate
+    dependsOn: DeployUAT
+    jobs:
+      - job: RunEvaluations
+        steps:
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.11'
+
+          - script: pip install -r requirements.txt
+            workingDirectory: starter-pack
+            displayName: Install dependencies
+
+          - script: python evaluate.py --out results
+            workingDirectory: starter-pack
+            displayName: Run agent evaluations
+            env:
+              AUTH_MODE: client_secret
+              TENANT_ID: $(PP_TENANT_ID)
+              CLIENT_ID: $(PP_CLIENT_ID)
+              CLIENT_SECRET: $(PP_CLIENT_SECRET)
+              ENVIRONMENT_ID: $(UAT_ENV_ID)
+              BOT_ID: $(BOT_ID_UAT)
+              ENVIRONMENT_TIER: UAT
+              DATAVERSE_URL: $(DATAVERSE_URL)
+              DATAVERSE_PREFIX: $(dataversePrefix)
+
+          # JUnit output means Azure DevOps renders per-test-case results
+          # natively in the Tests tab - no custom reporting needed.
+          - task: PublishTestResults@2
+            condition: always()
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: 'starter-pack/results/junit-*.xml'
+              testRunTitle: Copilot Studio agent evaluation
+              failTaskOnFailedTests: false
+
+          - publish: starter-pack/results
+            artifact: evaluation-results
+            condition: always()
+
+  - stage: PromoteProd
+    displayName: Promote to PROD
+    dependsOn: Evaluate
+    condition: succeeded()
+    jobs:
+      # A deployment job with an environment gives you the approval checkpoint.
+      - deployment: Promote
+        environment: Production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: solution
+
+                - task: PowerPlatformToolInstaller@2
+
+                - task: PowerPlatformImportSolution@2
+                  inputs:
+                    authenticationType: PowerPlatformSPN
+                    PowerPlatformSPN: $(PROD_URL)
+                    SolutionInputFile: $(Pipeline.Workspace)/solution/$(solutionName)_managed.zip
+                    PublishCustomizationChanges: true

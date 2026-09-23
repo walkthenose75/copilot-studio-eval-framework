@@ -1,0 +1,70 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Shakeout 1: List test sets (prove auth)",
+      "type": "shell",
+      "command": "python evaluate.py --list-test-sets sample-agent",
+      "problemMatcher": [],
+      "group": "test",
+      "detail": "Step 1 of SHAKEDOWN.md. Must succeed before anything else."
+    },
+    {
+      "label": "Shakeout 2: Smoke run (no persist)",
+      "type": "shell",
+      "command": "python evaluate.py --suite smoke --no-persist --out results",
+      "problemMatcher": [],
+      "group": "test",
+      "detail": "Step 2. Then inspect rawStatus values for unmapped tokens."
+    },
+    {
+      "label": "Shakeout 4: Persona security matrix",
+      "type": "shell",
+      "command": "python evaluate.py --suite security --no-persist",
+      "problemMatcher": [],
+      "group": "test"
+    },
+    {
+      "label": "Shakeout 5: Provision Dataverse (DRY RUN)",
+      "type": "shell",
+      "command": "python dataverse/provision_schema.py --url ${input:orgUrl} --prefix ${input:prefix} --dry-run",
+      "problemMatcher": [],
+      "detail": "Prints payloads, changes nothing."
+    },
+    {
+      "label": "Shakeout 5: Provision Dataverse (LIVE)",
+      "type": "shell",
+      "command": "python dataverse/provision_schema.py --url ${input:orgUrl} --prefix ${input:prefix}",
+      "problemMatcher": [],
+      "detail": "Creates tables. The prefix CANNOT be changed afterwards."
+    },
+    {
+      "label": "Full run (gate enforced)",
+      "type": "shell",
+      "command": "python evaluate.py --out results",
+      "problemMatcher": [],
+      "group": { "kind": "test", "isDefault": true }
+    },
+    {
+      "label": "Local self-check (no auth needed)",
+      "type": "shell",
+      "command": "python verify_package.py",
+      "problemMatcher": [],
+      "detail": "Validates syntax, config, CSVs and schema consistency offline."
+    }
+  ],
+  "inputs": [
+    {
+      "id": "orgUrl",
+      "type": "promptString",
+      "description": "Dataverse org URL",
+      "default": "https://yourorg.crm.dynamics.com"
+    },
+    {
+      "id": "prefix",
+      "type": "promptString",
+      "description": "Publisher prefix (2-8 chars, PERMANENT)",
+      "default": "cse"
+    }
+  ]
+}

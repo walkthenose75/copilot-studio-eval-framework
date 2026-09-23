@@ -1,0 +1,29 @@
+# Secrets and local config
+.env
+*.env
+!.env.template
+
+# Evaluation output
+starter-pack/results/
+starter-pack/samples/*.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Editors
+.vscode/*
+!.vscode/tasks.json
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Power Platform
+*.zip
+!solutions/**/*.zip
+out/

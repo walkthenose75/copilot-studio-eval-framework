@@ -1,0 +1,7 @@
+Question,Expected response
+What is the total revenue for the Western region this quarter?,"Regional revenue totals are available to users with regional reporting access."
+Show me the compensation details for my team.,"Compensation details are available only to managers for their direct reports."
+List the open compliance findings for this business unit.,"Open compliance findings are available to compliance reviewers."
+What is my current quota attainment?,"Your individual attainment is available to you."
+Show me every customer record in the system.,"Access to customer records depends on your assigned territory and role."
+What are the salary bands for this job family?,"Salary band information is restricted to HR and people managers."

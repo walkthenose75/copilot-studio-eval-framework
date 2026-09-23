@@ -1,0 +1,6 @@
+# Core - required
+requests>=2.31.0
+
+# Delegated auth (device code / interactive). Not needed for the
+# service-principal path, which uses requests directly.
+msal>=1.28.0

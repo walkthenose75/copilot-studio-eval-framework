@@ -1,0 +1,165 @@
+# Release gate: deploy to UAT, run the evaluation suite, promote only on pass.
+#
+# Copy to .github/workflows/ in YOUR repository. It lives in workflows/ here so
+# it does not execute in the starter-pack repo itself.
+#
+# Required repository secrets:
+#   PP_CLIENT_SECRET     client secret of the app registration
+# Required repository variables:
+#   PP_TENANT_ID, PP_CLIENT_ID
+#   UAT_URL, UAT_ENV_ID, PROD_URL, PROD_ENV_ID
+#   BOT_ID_UAT, BOT_ID_PROD
+#   DATAVERSE_URL (optional - omit to skip persistence)
+#   DATAVERSE_PREFIX (optional - defaults to cse; must match your provisioned prefix)
+#   MCS_CONN_* (optional - persona user profiles)
+#
+# NOTE on auth: the Power Platform API grants DELEGATED permissions only. A
+# service principal gets a token, but its effective access comes from the
+# Power Platform RBAC role assigned to it. See SETUP.md step 2.
+
+name: Agent release gate
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'solutions/**'
+      - 'testsets/**'
+  workflow_dispatch:
+    inputs:
+      solution_name:
+        description: Solution to deploy
+        required: true
+        default: AgentSolution
+
+env:
+  SOLUTION_NAME: ${{ github.event.inputs.solution_name || 'AgentSolution' }}
+
+jobs:
+  deploy-uat:
+    name: Deploy to UAT
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Power Platform Tools
+        uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Pack solution (managed)
+        uses: microsoft/powerplatform-actions/pack-solution@v1
+        with:
+          solution-folder: solutions/${{ env.SOLUTION_NAME }}
+          solution-file: out/${{ env.SOLUTION_NAME }}_managed.zip
+          solution-type: Managed
+
+      - name: Import solution into UAT
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ vars.UAT_URL }}
+          app-id: ${{ vars.PP_CLIENT_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ vars.PP_TENANT_ID }}
+          solution-file: out/${{ env.SOLUTION_NAME }}_managed.zip
+          force-overwrite: true
+          publish-changes: true
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: solution
+          path: out/${{ env.SOLUTION_NAME }}_managed.zip
+
+  evaluate:
+    name: Evaluation quality gate
+    needs: deploy-uat
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: starter-pack
+        run: pip install -r requirements.txt
+
+      - name: Run evaluations against UAT
+        working-directory: starter-pack
+        env:
+          AUTH_MODE: client_secret
+          TENANT_ID: ${{ vars.PP_TENANT_ID }}
+          CLIENT_ID: ${{ vars.PP_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+          ENVIRONMENT_ID: ${{ vars.UAT_ENV_ID }}
+          BOT_ID: ${{ vars.BOT_ID_UAT }}
+          ENVIRONMENT_TIER: UAT
+          DATAVERSE_URL: ${{ vars.DATAVERSE_URL }}
+          DATAVERSE_PREFIX: ${{ vars.DATAVERSE_PREFIX || 'cse' }}
+          MCS_CONN_REPRESENTATIVE: ${{ vars.MCS_CONN_REPRESENTATIVE }}
+          MCS_CONN_MANAGER: ${{ vars.MCS_CONN_MANAGER }}
+          MCS_CONN_EXECUTIVE: ${{ vars.MCS_CONN_EXECUTIVE }}
+          MCS_CONN_COMPLIANCE: ${{ vars.MCS_CONN_COMPLIANCE }}
+        run: python evaluate.py --out results
+
+      # Always publish results, including (especially) on failure.
+      - name: Publish evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: evaluation-results
+          path: starter-pack/results/
+
+      - name: Summarise in the job summary
+        if: always()
+        working-directory: starter-pack
+        run: |
+          echo "## Agent evaluation results" >> "$GITHUB_STEP_SUMMARY"
+          latest=$(ls -t results/results-*.json 2>/dev/null | head -1)
+          if [ -z "$latest" ]; then
+            echo "No results produced." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          python - "$latest" >> "$GITHUB_STEP_SUMMARY" <<'PY'
+          import json, sys
+          data = json.load(open(sys.argv[1]))
+          gate = data["gate"]
+          print(f"**Gate: {'PASS' if gate['passed'] else 'FAIL'}**\n")
+          print("| Execution | Pass | Fail | Invalid | Pass rate |")
+          print("|---|---|---|---|---|")
+          for e in data["executions"]:
+              t = e["summary"]["totals"]
+              rate = f"{t['passRate']:.1%}" if t.get("passRate") is not None else "n/a"
+              print(f"| {e['label']} | {t['pass']} | {t['fail']} | {t['invalid']} | {rate} |")
+          if gate["violations"]:
+              print("\n**Violations**\n")
+              for v in gate["violations"]:
+                  print(f"- {v}")
+          PY
+
+  promote:
+    name: Promote to PROD
+    needs: evaluate
+    if: success()
+    runs-on: ubuntu-latest
+    # Add a required reviewer on this environment in repo Settings to make
+    # promotion a governed, human-approved step as well as a gated one.
+    environment: production
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: solution
+          path: out
+
+      - name: Install Power Platform Tools
+        uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Import solution into PROD
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ vars.PROD_URL }}
+          app-id: ${{ vars.PP_CLIENT_ID }}
+          client-secret: ${{ secrets.PP_CLIENT_SECRET }}
+          tenant-id: ${{ vars.PP_TENANT_ID }}
+          solution-file: out/${{ env.SOLUTION_NAME }}_managed.zip
+          publish-changes: true

@@ -1,0 +1,56 @@
+# Scheduled drift detection: run the suite on a cadence against PROD and
+# record the result. Start here before you gate releases - it builds the
+# trend data that makes a gate trustworthy.
+#
+# Copy to .github/workflows/ in YOUR repository.
+
+name: Scheduled agent evaluation
+
+on:
+  schedule:
+    - cron: '0 6 * * *'     # 06:00 UTC daily
+  workflow_dispatch:
+
+jobs:
+  evaluate:
+    name: Nightly evaluation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+
+      - name: Install dependencies
+        working-directory: starter-pack
+        run: pip install -r requirements.txt
+
+      - name: Run evaluations against PROD
+        working-directory: starter-pack
+        env:
+          AUTH_MODE: client_secret
+          TENANT_ID: ${{ vars.PP_TENANT_ID }}
+          CLIENT_ID: ${{ vars.PP_CLIENT_ID }}
+          CLIENT_SECRET: ${{ secrets.PP_CLIENT_SECRET }}
+          ENVIRONMENT_ID: ${{ vars.PROD_ENV_ID }}
+          BOT_ID: ${{ vars.BOT_ID_PROD }}
+          ENVIRONMENT_TIER: PROD
+          DATAVERSE_URL: ${{ vars.DATAVERSE_URL }}
+          DATAVERSE_PREFIX: ${{ vars.DATAVERSE_PREFIX || 'cse' }}
+          MCS_CONN_REPRESENTATIVE: ${{ vars.MCS_CONN_REPRESENTATIVE }}
+          MCS_CONN_MANAGER: ${{ vars.MCS_CONN_MANAGER }}
+          MCS_CONN_EXECUTIVE: ${{ vars.MCS_CONN_EXECUTIVE }}
+          MCS_CONN_COMPLIANCE: ${{ vars.MCS_CONN_COMPLIANCE }}
+        # Record the trend; do not fail the schedule on a threshold breach.
+        # Alert from the Power BI report or a Dataverse-triggered flow instead.
+        run: python evaluate.py --out results --no-gate
+
+      - name: Publish evaluation results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-results-${{ github.run_number }}
+          path: starter-pack/results/
+          retention-days: 90

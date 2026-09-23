@@ -1,0 +1,218 @@
+// ---------------------------------------------------------------------------
+// DAX measures for the Copilot Studio evaluation governance report.
+//
+// Create these in a dedicated "Measures" table:
+//   Home > Enter data > name it "Measures" > load > delete the placeholder
+//   column > add each measure below.
+//
+// Model assumed:
+//   EvaluationRun[RunKey] 1 -> * MetricResult[RunKey]
+//   'Date'[Date] 1 -> * EvaluationRun[Run Date]
+// ---------------------------------------------------------------------------
+
+
+// === Core counts ===========================================================
+
+Metrics Evaluated =
+COUNTROWS ( MetricResult )
+
+Metrics Passed =
+CALCULATE ( COUNTROWS ( MetricResult ), MetricResult[Outcome] = "pass" )
+
+Metrics Failed =
+CALCULATE ( COUNTROWS ( MetricResult ), MetricResult[Outcome] = "fail" )
+
+Metrics Invalid =
+CALCULATE ( COUNTROWS ( MetricResult ), MetricResult[Outcome] = "invalid" )
+
+// Scored = pass + fail. Invalid and unknown are excluded from every rate:
+// an Invalid result means the test case was missing an expected answer or
+// keywords, so counting it as a failure blames the agent for a suite defect.
+Metrics Scored =
+CALCULATE (
+    COUNTROWS ( MetricResult ),
+    MetricResult[Outcome] IN { "pass", "fail" }
+)
+
+// Results whose status token the runner could not classify. These BLOCK the
+// release gate (failOnUnknownStatus), so they must be visible here too -
+// otherwise the report shows a healthy pass rate while the pipeline refuses to
+// promote, and nobody can see why from Power BI.
+Metrics Unclassified =
+CALCULATE ( COUNTROWS ( MetricResult ), MetricResult[Outcome] = "unknown" )
+
+// Reconciles the report with the gate: no evidence is not a pass.
+Gate Blockers =
+VAR Unclassified = [Metrics Unclassified]
+VAR Scored = [Metrics Scored]
+VAR Blockers = [Security Failures]
+RETURN
+    SWITCH (
+        TRUE (),
+        Scored = 0 || ISBLANK ( Scored ), "No gradeable results",
+        Unclassified > 0, "Unclassified status tokens",
+        Blockers > 0, "Safety or security failure",
+        BLANK ()
+    )
+
+
+// === Rates =================================================================
+
+Pass Rate =
+DIVIDE ( [Metrics Passed], [Metrics Scored] )
+
+Invalid Rate =
+DIVIDE ( [Metrics Invalid], [Metrics Evaluated] )
+
+// Suite hygiene: a high invalid rate means the test set needs expected
+// answers, not that the agent regressed.
+Suite Health =
+SWITCH (
+    TRUE (),
+    ISBLANK ( [Metrics Evaluated] ), BLANK (),
+    [Invalid Rate] > 0.25, "Needs attention - many Invalid results",
+    [Invalid Rate] > 0.10, "Some test cases incomplete",
+    "Healthy"
+)
+
+
+// === Trend =================================================================
+
+Pass Rate (Previous Run) =
+VAR CurrentRunDate = MAX ( EvaluationRun[Run Date] )
+VAR PriorDate =
+    CALCULATE (
+        MAX ( EvaluationRun[Run Date] ),
+        ALLEXCEPT ( EvaluationRun, EvaluationRun[Agent], EvaluationRun[Suite], EvaluationRun[Persona] ),
+        EvaluationRun[Run Date] < CurrentRunDate
+    )
+RETURN
+    CALCULATE (
+        [Pass Rate],
+        ALLEXCEPT ( EvaluationRun, EvaluationRun[Agent], EvaluationRun[Suite], EvaluationRun[Persona] ),
+        EvaluationRun[Run Date] = PriorDate
+    )
+
+Pass Rate Delta =
+VAR Current = [Pass Rate]
+VAR Prior = [Pass Rate (Previous Run)]
+RETURN IF ( NOT ISBLANK ( Prior ), Current - Prior )
+
+// Drift, not noise: compare the latest run to the 30-day mean.
+Pass Rate 30d Average =
+CALCULATE (
+    [Pass Rate],
+    DATESINPERIOD ( 'Date'[Date], MAX ( 'Date'[Date] ), -30, DAY )
+)
+
+Drift Flag =
+VAR Delta = [Pass Rate] - [Pass Rate 30d Average]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( [Pass Rate] ), BLANK (),
+        Delta <= -0.10, "Declining sharply",
+        Delta <= -0.05, "Declining",
+        Delta >= 0.05, "Improving",
+        "Stable"
+    )
+
+
+// === Release readiness =====================================================
+
+// Hard stops: any failure in a safety or security method blocks a release.
+Security Failures =
+CALCULATE (
+    [Metrics Failed],
+    MetricResult[Test Method] IN { "Custom", "ContentSafety", "Content safety" }
+)
+
+Release Readiness =
+VAR Rate = [Pass Rate]
+VAR Blockers = [Security Failures]
+VAR Unclassified = [Metrics Unclassified]
+VAR Scored = [Metrics Scored]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( Rate ) || Scored = 0, "Not evaluated - no gradeable results",
+        Unclassified > 0, "Blocked - unclassified results, quality unverified",
+        Blockers > 0, "Blocked - safety or security failure",
+        Rate < 0.90, "Blocked - below threshold",
+        Rate < 0.95, "Ready with risk",
+        "Ready"
+    )
+
+// The most important number on the executive page: agents with NO coverage.
+// A blank pass rate is a bigger problem than a low one.
+Agents Evaluated =
+DISTINCTCOUNT ( EvaluationRun[Agent Key] )
+
+Agent Health Score =
+VAR Rate = [Pass Rate]
+RETURN IF ( [Security Failures] > 0, 0, Rate )
+
+
+// === Persona analysis ======================================================
+
+// Identity-aware evaluation only means something if the SAME test case
+// resolves differently by persona. This counts those divergences.
+Test Cases Diverging By Persona =
+VAR Summary =
+    SUMMARIZE (
+        MetricResult,
+        MetricResult[Test Case ID],
+        MetricResult[Test Method],
+        "Outcomes", DISTINCTCOUNT ( MetricResult[Outcome] )
+    )
+RETURN
+    COUNTROWS ( FILTER ( Summary, [Outcomes] > 1 ) )
+
+Personas Covered =
+DISTINCTCOUNT ( EvaluationRun[Persona] )
+
+
+// === Root cause ============================================================
+
+// Pair with EvaluationRun / MetricResult[Failure Cluster] on a table visual,
+// sorted by this measure descending. The top cluster is usually one fixable
+// instruction problem affecting many test cases.
+Failures In Cluster =
+CALCULATE (
+    [Metrics Failed],
+    ALLEXCEPT ( MetricResult, MetricResult[Failure Cluster] )
+)
+
+Distinct Failure Clusters =
+CALCULATE (
+    DISTINCTCOUNT ( MetricResult[Failure Cluster] ),
+    MetricResult[Outcome] = "fail"
+)
+
+
+// === Coverage and freshness ================================================
+
+Last Evaluated =
+MAX ( EvaluationRun[Start Time] )
+
+Days Since Last Evaluation =
+DATEDIFF ( [Last Evaluated], NOW (), DAY )
+
+Coverage Status =
+VAR Age = [Days Since Last Evaluation]
+RETURN
+    SWITCH (
+        TRUE (),
+        ISBLANK ( Age ), "Never evaluated",
+        Age > 30, "Stale - over 30 days",
+        Age > 7, "Ageing - over 7 days",
+        "Current"
+    )
+
+// Copilot Studio keeps results for 89 days. Anything older exists ONLY in
+// this repository - which is the entire reason it exists.
+Runs Beyond Platform Retention =
+CALCULATE (
+    COUNTROWS ( EvaluationRun ),
+    EvaluationRun[Run Date] < TODAY () - 89
+)

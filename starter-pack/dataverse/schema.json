@@ -1,0 +1,78 @@
+{
+  "publisher": {
+    "friendlyName": "Copilot Studio Evaluation",
+    "uniqueName": "copilotstudioeval",
+    "description": "Publisher for the Copilot Studio enterprise evaluation framework.",
+    "customizationPrefix": "cse",
+    "customizationOptionValuePrefix": 63200
+  },
+  "solution": {
+    "friendlyName": "Copilot Studio Evaluation Framework",
+    "uniqueName": "CopilotStudioEvaluationFramework",
+    "description": "Results repository for automated Copilot Studio agent evaluations.",
+    "version": "1.0.0.0"
+  },
+
+  "tables": [
+    {
+      "name": "evaluationrun",
+      "displayName": "Evaluation Run",
+      "displayCollectionName": "Evaluation Runs",
+      "description": "One execution of a test set against an agent, under one user profile.",
+      "primaryName": { "name": "name", "displayName": "Name", "maxLength": 200 },
+      "columns": [
+        { "name": "runid",           "type": "String",   "displayName": "Run ID",            "maxLength": 100, "description": "runId returned by the Power Platform API." },
+        { "name": "agentkey",        "type": "String",   "displayName": "Agent Key",         "maxLength": 100 },
+        { "name": "agentname",       "type": "String",   "displayName": "Agent Name",        "maxLength": 200 },
+        { "name": "botid",           "type": "String",   "displayName": "Bot ID",            "maxLength": 100, "description": "cdsBotId." },
+        { "name": "environmentid",   "type": "String",   "displayName": "Environment ID",    "maxLength": 100 },
+        { "name": "environmenttier", "type": "String",   "displayName": "Environment Tier",  "maxLength": 50,  "description": "DEV, UAT or PROD." },
+        { "name": "solutionversion", "type": "String",   "displayName": "Solution Version",  "maxLength": 50 },
+        { "name": "commitsha",       "type": "String",   "displayName": "Commit SHA",        "maxLength": 50 },
+        { "name": "persona",         "type": "String",   "displayName": "Persona",           "maxLength": 100 },
+        { "name": "suite",           "type": "String",   "displayName": "Suite",             "maxLength": 100 },
+        { "name": "category",        "type": "String",   "displayName": "Category",          "maxLength": 50 },
+        { "name": "testsetid",       "type": "String",   "displayName": "Test Set ID",       "maxLength": 100 },
+        { "name": "testsetname",     "type": "String",   "displayName": "Test Set Name",     "maxLength": 200 },
+        { "name": "mcsconnectionid", "type": "String",   "displayName": "MCS Connection ID", "maxLength": 100 },
+        { "name": "ownerid",         "type": "String",   "displayName": "Run Owner ID",      "maxLength": 100 },
+        { "name": "state",           "type": "String",   "displayName": "State",             "maxLength": 50 },
+        { "name": "starttime",       "type": "DateTime", "displayName": "Start Time" },
+        { "name": "endtime",         "type": "DateTime", "displayName": "End Time" },
+        { "name": "totaltestcases",  "type": "Integer",  "displayName": "Total Test Cases",  "minValue": 0, "maxValue": 100000 },
+        { "name": "passcount",       "type": "Integer",  "displayName": "Pass Count",        "minValue": 0, "maxValue": 100000 },
+        { "name": "failcount",       "type": "Integer",  "displayName": "Fail Count",        "minValue": 0, "maxValue": 100000 },
+        { "name": "invalidcount",    "type": "Integer",  "displayName": "Invalid Count",     "minValue": 0, "maxValue": 100000 },
+        { "name": "passrate",        "type": "Decimal",  "displayName": "Pass Rate",         "precision": 4, "minValue": 0, "maxValue": 1 }
+      ]
+    },
+    {
+      "name": "metricresult",
+      "displayName": "Metric Result",
+      "displayCollectionName": "Metric Results",
+      "description": "One test case graded by one test method. The analysis grain.",
+      "primaryName": { "name": "name", "displayName": "Name", "maxLength": 200 },
+      "columns": [
+        { "name": "testcaseid",     "type": "String",  "displayName": "Test Case ID", "maxLength": 100 },
+        { "name": "method",         "type": "String",  "displayName": "Test Method",  "maxLength": 100, "description": "General quality, Compare meaning, Content safety, Tool use, Keyword match, Text similarity, Exact match or Custom." },
+        { "name": "outcome",        "type": "String",  "displayName": "Outcome",      "maxLength": 50,  "description": "Normalised: pass, fail, invalid or unknown." },
+        { "name": "rawstatus",      "type": "String",  "displayName": "Raw Status",   "maxLength": 100, "description": "Status token exactly as returned by the API." },
+        { "name": "score",          "type": "Decimal", "displayName": "Score",        "precision": 4, "minValue": 0, "maxValue": 1 },
+        { "name": "airesultreason", "type": "Memo",    "displayName": "AI Result Reason", "maxLength": 4000, "description": "The model's explanation of the result. The root-cause corpus." },
+        { "name": "errorreason",    "type": "Memo",    "displayName": "Error Reason", "maxLength": 2000 },
+        { "name": "persona",        "type": "String",  "displayName": "Persona",      "maxLength": 100 },
+        { "name": "suite",          "type": "String",  "displayName": "Suite",        "maxLength": 100 }
+      ]
+    }
+  ],
+
+  "relationships": [
+    {
+      "schemaName": "EvaluationRun_MetricResults",
+      "referencedTable": "evaluationrun",
+      "referencingTable": "metricresult",
+      "lookupName": "EvaluationRunId",
+      "lookupDisplayName": "Evaluation Run"
+    }
+  ]
+}

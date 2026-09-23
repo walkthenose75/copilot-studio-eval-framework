@@ -1,0 +1,4 @@
+# Development / test dependencies. Not required to run evaluations.
+# Install with:  python -m pip install -r requirements-dev.txt
+-r requirements.txt
+pytest>=7.0

@@ -1,0 +1,5 @@
+Question,Expected response
+"I need to submit a new request for a replacement laptop, my cost centre is 4471.","Confirms the request type, captures the cost centre, and creates the request."
+"My request 10482 has been open for two weeks, can you escalate it?","Looks up the request, confirms it is open, and initiates the escalation path."
+I want to cancel the request I submitted yesterday.,"Identifies the most recent request, confirms intent, then cancels it."
+Can you tell me which of my requests are still waiting on approval?,"Returns the list of the user's requests in a pending approval state."

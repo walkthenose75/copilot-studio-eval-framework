@@ -1,0 +1,1436 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enterprise Evaluation Framework for Copilot Studio Agents</title>
+<meta name="description" content="An enterprise evaluation framework for Microsoft Copilot Studio agents: test sets, automated grading, CI/CD quality gates, Dataverse history and Power BI governance reporting.">
+<link rel="canonical" href="https://walkthenose75.github.io/copilot-studio-eval-framework/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://walkthenose75.github.io/copilot-studio-eval-framework/">
+<meta property="og:title" content="Enterprise Evaluation Framework for Copilot Studio Agents">
+<meta property="og:description" content="An enterprise evaluation framework for Microsoft Copilot Studio agents: test sets, automated grading, CI/CD quality gates, Dataverse history and Power BI governance reporting.">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Enterprise Evaluation Framework for Copilot Studio Agents">
+<meta name="twitter:description" content="An enterprise evaluation framework for Microsoft Copilot Studio agents: test sets, automated grading, CI/CD quality gates, Dataverse history and Power BI governance reporting.">
+<style>
+:root{
+  --neon:#50E6FF; --neon-deep:#0078D4; --neon-dark:#005A9E; --neon-glow:rgba(80,230,255,.40);
+  --bg:#0B1220; --bg-2:#101A2C; --panel:#141F35; --panel-2:#18253E;
+  --stroke:#22314E; --stroke-2:#2E4468;
+  --tx:#E9EFF7; --tx-2:#A9BCD4; --tx-3:#7C90AC;
+  --ok:#3FD6A0; --warn:#FFC83D; --prev:#C58AF9; --bad:#FF6B6B;
+  --nav-w:300px; --max:900px;
+  --mono:ui-monospace,SFMono-Regular,Consolas,"Cascadia Mono",monospace;
+  --font:"Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --r:10px;
+}
+html[data-theme="light"]{
+  --bg:#F6F9FC; --bg-2:#FFFFFF; --panel:#FFFFFF; --panel-2:#EEF4FB;
+  --stroke:#DCE5F0; --stroke-2:#C2D1E3;
+  --tx:#11243C; --tx-2:#42586F; --tx-3:#63788F;
+  --neon:#0078D4; --neon-glow:rgba(0,120,212,.22);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:var(--font);font-size:16.5px;line-height:1.65;-webkit-font-smoothing:antialiased}
+a{color:var(--neon);text-decoration:none}
+a:hover{text-decoration:underline}
+
+/* ---------- top bar ---------- */
+.topbar{position:sticky;top:0;z-index:60;display:flex;align-items:center;gap:14px;
+  padding:10px 22px;background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:saturate(160%) blur(14px);border-bottom:1px solid var(--stroke)}
+.brandmark{width:26px;height:26px;flex:0 0 26px;border-radius:7px;
+  background:linear-gradient(135deg,var(--neon),var(--neon-deep));
+  box-shadow:0 0 16px var(--neon-glow)}
+.brandtx{font-weight:600;letter-spacing:.2px;font-size:14.5px}
+.brandtx span{color:var(--tx-3);font-weight:400}
+.topbar .spacer{flex:1}
+.tbtn{border:1px solid var(--stroke-2);background:var(--panel);color:var(--tx-2);
+  font:inherit;font-size:12.5px;padding:5px 11px;border-radius:999px;cursor:pointer}
+.tbtn:hover{border-color:var(--neon);color:var(--tx)}
+#navToggle{display:none}
+
+/* ---------- progress ---------- */
+#progress{position:fixed;top:0;left:0;height:2px;width:0;z-index:80;
+  background:linear-gradient(90deg,var(--neon-deep),var(--neon));box-shadow:0 0 10px var(--neon-glow)}
+
+/* ---------- layout ---------- */
+.shell{display:grid;grid-template-columns:minmax(0,1fr) var(--nav-w);gap:44px;
+  max-width:1360px;margin:0 auto;padding:0 28px 120px}
+main{max-width:var(--max);padding-top:34px;min-width:0}
+
+/* ---------- right nav ---------- */
+aside{position:sticky;top:54px;align-self:start;height:calc(100vh - 74px);
+  overflow-y:auto;padding:26px 0 40px;border-left:1px solid var(--stroke)}
+aside::-webkit-scrollbar{width:6px}
+aside::-webkit-scrollbar-thumb{background:var(--stroke-2);border-radius:3px}
+.navhead{font-size:11px;letter-spacing:1.3px;text-transform:uppercase;color:var(--tx-3);
+  padding:0 0 10px 18px;font-weight:600}
+.toc{list-style:none;margin:0;padding:0}
+.toc li{margin:0}
+.toc a{display:flex;gap:10px;align-items:baseline;padding:6px 10px 6px 18px;
+  font-size:13.4px;color:var(--tx-2);border-left:2px solid transparent;line-height:1.4}
+.toc a:hover{color:var(--tx);background:var(--panel);text-decoration:none}
+.toc a.active{color:var(--neon);border-left-color:var(--neon);background:var(--panel);font-weight:600}
+.toc a .n{color:var(--tx-3);font-size:11.5px;font-variant-numeric:tabular-nums;min-width:17px}
+.toc a.active .n{color:var(--neon)}
+.toc .grp{font-size:10.5px;letter-spacing:1.1px;text-transform:uppercase;color:var(--tx-3);
+  padding:16px 0 5px 18px;font-weight:700;opacity:.8}
+
+/* ---------- hero ---------- */
+.hero{padding:26px 0 8px;border-bottom:1px solid var(--stroke);margin-bottom:10px}
+.eyebrow{display:inline-block;font-size:11.5px;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--neon);font-weight:700;margin-bottom:14px}
+h1{font-size:42px;line-height:1.14;margin:0 0 16px;font-weight:700;letter-spacing:-.6px}
+.hero .lede{font-size:19px;color:var(--tx-2);max-width:42em;margin:0 0 22px}
+.pills{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:26px}
+.pill{font-size:12.5px;padding:5px 12px;border-radius:999px;border:1px solid var(--stroke-2);
+  color:var(--tx-2);background:var(--panel)}
+.pill.key{border-color:var(--neon);color:var(--neon);box-shadow:0 0 14px var(--neon-glow) inset}
+
+/* ---------- sections ---------- */
+section{padding:42px 0;border-bottom:1px solid var(--stroke);scroll-margin-top:62px}
+section:last-of-type{border-bottom:0}
+h2{font-size:27px;line-height:1.25;margin:0 0 6px;font-weight:700;letter-spacing:-.3px}
+h2 .sn{color:var(--neon);font-size:14px;font-weight:700;display:block;margin-bottom:7px;letter-spacing:1.2px}
+h3{font-size:18px;margin:30px 0 10px;font-weight:600}
+h4{font-size:15px;margin:22px 0 8px;font-weight:600;color:var(--tx-2)}
+p{margin:0 0 15px}
+ul,ol{margin:0 0 15px;padding-left:22px}
+li{margin:5px 0}
+.sub{color:var(--tx-2);font-size:16px;margin:0 0 22px;max-width:44em}
+strong{font-weight:600;color:var(--tx)}
+
+/* ---------- badges ---------- */
+.b{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;
+  padding:2.5px 8px;border-radius:5px;vertical-align:middle;margin-left:7px;white-space:nowrap}
+.b-prev{background:rgba(197,138,249,.16);color:var(--prev);border:1px solid rgba(197,138,249,.4)}
+.b-ga{background:rgba(63,214,160,.14);color:var(--ok);border:1px solid rgba(63,214,160,.38)}
+.b-cust{background:rgba(255,200,61,.14);color:var(--warn);border:1px solid rgba(255,200,61,.4)}
+.b-std{background:rgba(80,230,255,.13);color:var(--neon);border:1px solid rgba(80,230,255,.38)}
+
+/* ---------- cards ---------- */
+.grid{display:grid;gap:14px;margin:18px 0 6px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);padding:16px 18px}
+.card h4{margin:0 0 6px;color:var(--tx);font-size:14.5px}
+.card p{margin:0;font-size:14px;color:var(--tx-2)}
+.card ul{margin:8px 0 0;padding-left:18px;font-size:14px;color:var(--tx-2)}
+.card.accent{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon-glow) inset}
+
+/* ---------- callouts ---------- */
+.note{border-left:3px solid var(--neon);background:var(--panel);padding:14px 18px;
+  border-radius:0 var(--r) var(--r) 0;margin:20px 0;font-size:15px;color:var(--tx-2)}
+.note strong{color:var(--tx)}
+.note.warn{border-left-color:var(--warn)}
+.note.prev{border-left-color:var(--prev)}
+.note.ok{border-left-color:var(--ok)}
+
+/* ---------- tables ---------- */
+.tw{overflow-x:auto;margin:18px 0;border:1px solid var(--stroke);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th{background:var(--panel-2);text-align:left;padding:10px 14px;font-weight:600;
+  font-size:12px;letter-spacing:.7px;text-transform:uppercase;color:var(--tx-2);
+  border-bottom:1px solid var(--stroke)}
+td{padding:10px 14px;border-bottom:1px solid var(--stroke);color:var(--tx-2);vertical-align:top}
+tr:last-child td{border-bottom:0}
+tbody tr:hover td{background:var(--panel)}
+td code,th code{font-size:12.5px}
+
+/* ---------- code ---------- */
+pre{background:var(--bg-2);border:1px solid var(--stroke);border-radius:var(--r);
+  padding:15px 17px;overflow-x:auto;margin:14px 0;font-size:13px;line-height:1.6}
+code{font-family:var(--mono);font-size:13.6px}
+p code,li code,td code{background:var(--panel-2);border:1px solid var(--stroke);
+  padding:1px 6px;border-radius:5px;color:var(--neon);font-size:13px}
+pre code{background:none;border:0;padding:0;color:#CBD9EC}
+.cw{position:relative}
+.copy{position:absolute;top:10px;right:10px;font:inherit;font-size:11px;padding:3px 9px;
+  border-radius:6px;border:1px solid var(--stroke-2);background:var(--panel);color:var(--tx-3);cursor:pointer;opacity:0;transition:.15s}
+.cw:hover .copy{opacity:1}
+.copy:hover{color:var(--neon);border-color:var(--neon)}
+
+/* ---------- steps ---------- */
+.steps{counter-reset:s;list-style:none;padding:0;margin:18px 0}
+.steps>li{counter-increment:s;position:relative;padding:0 0 18px 42px;margin:0;
+  border-left:1px solid var(--stroke);margin-left:13px}
+.steps>li:last-child{border-left-color:transparent;padding-bottom:0}
+.steps>li::before{content:counter(s);position:absolute;left:-13px;top:0;width:26px;height:26px;
+  border-radius:50%;background:var(--panel);border:1px solid var(--neon);color:var(--neon);
+  display:grid;place-items:center;font-size:12px;font-weight:700}
+.steps>li h4{margin:2px 0 6px;color:var(--tx);font-size:15.5px}
+.steps>li p,.steps>li ul{font-size:14.5px;color:var(--tx-2)}
+
+/* ---------- figure ---------- */
+figure{margin:22px 0;background:var(--panel);border:1px solid var(--stroke);
+  border-radius:var(--r);padding:20px 18px 14px}
+figure svg{width:100%;height:auto;display:block}
+figcaption{font-size:12.5px;color:var(--tx-3);margin-top:12px;text-align:center}
+
+/* ---------- sources ---------- */
+.srcs{margin:24px 0 0;padding:14px 18px;background:var(--panel);border:1px solid var(--stroke);
+  border-radius:var(--r);font-size:13px}
+.srcs .t{font-size:10.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--tx-3);
+  font-weight:700;margin-bottom:7px}
+.srcs ul{margin:0;padding-left:18px;color:var(--tx-2)}
+.srcs li{margin:3px 0}
+
+/* ---------- maturity ---------- */
+.mat{display:grid;gap:10px;margin:20px 0}
+.mrow{display:grid;grid-template-columns:78px 1fr;gap:16px;align-items:center;
+  background:var(--panel);border:1px solid var(--stroke);border-radius:var(--r);padding:13px 16px}
+.mrow .lv{font-weight:700;font-size:12px;letter-spacing:.8px;color:var(--tx-3);text-transform:uppercase}
+.mrow .bar{height:5px;border-radius:3px;background:var(--stroke-2);margin-top:8px;overflow:hidden}
+.mrow .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--neon-deep),var(--neon))}
+.mrow strong{display:block;font-size:15px;margin-bottom:2px}
+.mrow p{margin:0;font-size:13.6px;color:var(--tx-2)}
+.mrow.target{border-color:var(--neon);box-shadow:0 0 0 1px var(--neon-glow) inset}
+.mrow.target .lv{color:var(--neon)}
+
+/* ---------- misc ---------- */
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px;margin:14px 0}
+.kv dt{color:var(--tx-3);font-weight:600}
+.kv dd{margin:0;color:var(--tx-2)}
+hr{border:0;border-top:1px solid var(--stroke);margin:28px 0}
+footer{max-width:1360px;margin:0 auto;padding:30px 28px 60px;color:var(--tx-3);font-size:13px;
+  border-top:1px solid var(--stroke)}
+.backtop{display:inline-block;margin-top:18px;font-size:12.5px;color:var(--tx-3)}
+
+@media (max-width:1080px){
+  :root{--nav-w:250px}
+  .shell{gap:28px}
+}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr;padding:0 18px 80px}
+  aside{position:fixed;top:47px;right:0;width:280px;height:calc(100vh - 47px);
+    background:var(--bg-2);border-left:1px solid var(--stroke);z-index:70;
+    transform:translateX(100%);transition:transform .22s ease}
+  aside.open{transform:translateX(0)}
+  #navToggle{display:inline-block}
+  h1{font-size:31px}
+  h2{font-size:23px}
+  .g2,.g3{grid-template-columns:1fr}
+  body{font-size:16px}
+}
+@media print{
+  aside,.topbar,#progress,.copy{display:none}
+  body{background:#fff;color:#000}
+  .shell{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<div class="topbar">
+  <div class="brandmark"></div>
+  <div class="brandtx">Enterprise Evaluation Framework <span>&nbsp;·&nbsp; Copilot Studio Agents</span></div>
+  <div class="spacer"></div>
+  <button class="tbtn" id="themeToggle" type="button">Light</button>
+  <button class="tbtn" id="navToggle" type="button">Contents</button>
+</div>
+
+<div class="shell">
+<main>
+
+<div class="hero">
+  <div class="eyebrow">Microsoft Copilot Studio &nbsp;·&nbsp; Standard harness</div>
+  <h1>Building an Enterprise Evaluation Framework for Copilot Studio Agents</h1>
+  <p class="lede">Moving from individual agent testing to an enterprise AI Quality Engineering practice —
+  standardized test sets, automated grading, release quality gates, durable evaluation history and
+  cross-agent governance reporting.</p>
+  <div class="pills">
+    <span class="pill key">Standardized testing</span>
+    <span class="pill key">Automated validation</span>
+    <span class="pill key">Governance &amp; reporting</span>
+    <span class="pill key">CI/CD integration</span>
+    <span class="pill key">Production-ready AI quality management</span>
+  </div>
+  <div class="note">
+    <strong>How to read this document.</strong> Every capability is tagged so you can tell product
+    from pattern:
+    <span class="b b-ga">Generally available</span> shipped and supported ·
+    <span class="b b-prev">Preview</span> shipped as a public preview feature ·
+    <span class="b b-cust">Customer-built</span> a pattern you assemble from supported building blocks.
+    <br><br>
+    Every product behaviour described here is drawn from Microsoft's public documentation for agents
+    powered by the <strong>standard harness</strong> — the Microsoft Learn articles on agent evaluation
+    each carry the note <em>"This article describes features used in agents or agent flows powered by
+    the standard harness."</em> Nothing in this framework requires the new Copilot Studio experience or
+    the GitHub Copilot harness. Sources are listed at the end of each section.
+  </div>
+  <div class="note">
+    <strong>Harness compatibility.</strong> Copilot Studio runs every agent on a <em>harness</em> — a
+    runtime that sits between your design and the model. Microsoft documents three:
+    the <span class="b b-std">standard harness</span> (rule-based agents and agent flows),
+    the <strong>GitHub Copilot harness</strong> (reasoning-heavy, autonomous multi-step agents), and
+    the <strong>Copilot chat harness</strong> (extends Microsoft 365 Copilot). This framework targets the
+    <strong>standard harness</strong>, because that is where agent evaluation is automatable today: the
+    multi-method test sets, the four safety evaluators, and the <strong>Power Platform REST API</strong>
+    and connector actions this framework is built on are all documented for the standard harness. The new
+    agent experience has its own <strong>Evaluate</strong> tab, but as of September 2026 it is a
+    <span class="b b-prev">Preview</span> whose only test method is <em>General quality</em> — which does
+    not compare responses to expected answers — and it documents no evaluation REST API of its own, so
+    automated release gates are not yet possible there. The approach here is response-level, not
+    harness-specific: as the new experience reaches method and API parity, the same gate logic and
+    results schema carry over unchanged.
+    <br><br>
+    Sources:
+    <a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/harnesses-overview">Harnesses in Copilot Studio</a> ·
+    <a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation (standard harness)</a> ·
+    <a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/agents-experience/analytics-agent-evaluation-intro">Evaluate an agent (preview) — new agent experience</a>.
+  </div>
+</div>
+
+<!-- ============ 1 ============ -->
+<section id="s1">
+  <h2><span class="sn">01 — Executive summary</span>An evaluation practice, not a testing task</h2>
+  <p class="sub">The goal is a repeatable, auditable quality system that every agent in the estate
+  passes through before it reaches users — and keeps passing through after it does.</p>
+
+  <p>Microsoft Copilot Studio now ships a first-party evaluation capability: you author a
+  <strong>test set</strong> of test cases, choose one or more <strong>test methods</strong> that grade
+  the agent's responses, run the evaluation, and read per-case pass/fail plus an aggregate score.
+  Those same evaluations can be triggered from the <strong>Power Platform REST API</strong> or the
+  <strong>Microsoft Copilot Studio connector</strong>, which is what turns a maker feature into an
+  enterprise quality gate.</p>
+
+  <div class="grid g3">
+    <div class="card"><h4>Standardize</h4><p>One test taxonomy across every agent: smoke, regression,
+      security, scenario, safety. Reusable test sets owned as assets, not as one-off clicks.</p></div>
+    <div class="card"><h4>Automate</h4><p>Evaluations run from CI/CD and on a schedule — triggered by
+      REST API or connector, never dependent on who remembers to click Run.</p></div>
+    <div class="card"><h4>Govern</h4><p>Results persisted beyond the platform's 89-day window, scored
+      against thresholds, and surfaced in an executive, operational and engineering view.</p></div>
+  </div>
+
+  <div class="note">
+    <strong>The one-line story:</strong> move from individual agent testing to an enterprise AI Quality
+    Engineering practice — with the same rigor, gates and evidence trail you already apply to software.
+  </div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation — Microsoft Copilot Studio</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-automate-tools">Trigger agent evaluations with connectors</a></li>
+  </ul></div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section id="s2">
+  <h2><span class="sn">02 — Why it matters</span>Agents are non-deterministic; releases are not</h2>
+  <p class="sub">Traditional software is tested before release against fixed expected output. An agent's
+  behaviour shifts with models, prompts, knowledge, tools and context — so quality has to be measured
+  continuously, not asserted once.</p>
+
+  <p>Microsoft's own framing is blunt: agent evaluations are <em>"the standardized mechanism that make
+  agent variability visible and manageable,"</em> and unlike debugging they are <em>"not a one-time
+  check or a manual review"</em> but a consistent process that keeps you ahead of drift. Responses
+  <em>"shift with model updates, data changes, prompts, tools, and context. What works today may drift
+  tomorrow."</em></p>
+
+  <h3>What actually has to be validated</h3>
+  <div class="grid g2">
+    <div class="card"><h4>Accuracy</h4><p>Did the agent give the right answer — measurable with
+      <code>Compare meaning</code>, <code>Exact match</code>, <code>Text similarity</code> or
+      <code>Keyword match</code>.</p></div>
+    <div class="card"><h4>Grounding quality</h4><p>Is the answer based on provided context rather than
+      invention — the <em>groundedness</em> criterion inside <code>General quality</code>.</p></div>
+    <div class="card"><h4>Safety</h4><p>Four safety evaluators: hatefulness and unfairness, sexual
+      content, violence, self-harm — graded pass/fail against a severity threshold.</p></div>
+    <div class="card"><h4>Permission trimming</h4><p>Evaluations run under a selected
+      <strong>user profile</strong>, so the agent sees only what that account can access.</p></div>
+    <div class="card"><h4>Tool execution</h4><p><code>Tool use</code> tests whether the agent actually
+      invoked the expected tools or topics to produce the answer.</p></div>
+    <div class="card"><h4>Multi-turn behaviour</h4><p>Conversation test sets evaluate a full interaction
+      rather than one isolated question.</p></div>
+    <div class="card"><h4>Business outcome</h4><p><code>Custom</code> test methods let you label answers
+      against your own written criteria — e.g. <em>Compliant</em> / <em>Non-Compliant</em>.</p></div>
+    <div class="card accent"><h4>Regression</h4><p>The same test set re-run against a changed agent
+      gives <em>"an objective standard to measure and compare changes in performance."</em></p></div>
+  </div>
+
+  <div class="note ok"><strong>Key message:</strong> agent quality must be treated as a software
+  engineering discipline — versioned assets, automated execution, thresholds, evidence.</div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation</a> — safety evaluators, user profiles, regression framing</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-overview">Choose evaluation methods</a> — method-by-method definitions</li>
+    <li><a href="https://www.microsoft.com/en-us/microsoft-copilot/blog/copilot-studio/how-to-evaluate-ai-agents/">How to evaluate AI agents in Microsoft Copilot Studio</a> — Microsoft Copilot Blog</li>
+  </ul></div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section id="s3">
+  <h2><span class="sn">03 — Requirements</span>What an enterprise evaluation programme has to deliver</h2>
+  <p class="sub">Four requirement groups, mapped to the capability that satisfies each one and how it is
+  delivered.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Group</th><th>Requirement</th><th>Satisfied by</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="4"><strong>Test management</strong></td><td>Reusable test sets</td><td>Copilot Studio test sets (up to 100 test cases each); import from CSV/TXT</td><td><span class="b b-prev">Preview</span></td></tr>
+      <tr><td>Regression testing</td><td>Re-run the same test set after each change; compare runs</td><td><span class="b b-prev">Preview</span></td></tr>
+      <tr><td>Multi-turn scenarios</td><td>Conversation test sets (vs. single response test sets)</td><td><span class="b b-prev">Preview</span></td></tr>
+      <tr><td>Versioning</td><td>Test-set source files held in Git alongside the solution</td><td><span class="b b-cust">Customer-built</span></td></tr>
+      <tr><td rowspan="3"><strong>Automation</strong></td><td>CI/CD integration</td><td>Power Platform REST API <code>makerevaluation</code> operations</td><td><span class="b b-prev">Preview</span></td></tr>
+      <tr><td>Scheduled testing</td><td>Recurrence flow + Microsoft Copilot Studio connector actions</td><td><span class="b b-prev">Preview</span></td></tr>
+      <tr><td>Release gates</td><td>Pipeline step that reads run results and fails the build below threshold</td><td><span class="b b-cust">Customer-built</span></td></tr>
+      <tr><td rowspan="3"><strong>Governance</strong></td><td>Historical tracking</td><td>Results persisted to Dataverse — the platform retains results 89 days</td><td><span class="b b-cust">Customer-built</span></td></tr>
+      <tr><td>Quality scorecards</td><td>Threshold model over persisted run/metric data</td><td><span class="b b-cust">Customer-built</span></td></tr>
+      <tr><td>Auditability</td><td>Run ID, owner ID, test set ID, timestamps, per-metric result returned by the API</td><td><span class="b b-prev">Preview</span></td></tr>
+      <tr><td rowspan="3"><strong>Reporting</strong></td><td>Cross-agent views</td><td>Power BI over the Dataverse results store</td><td><span class="b b-cust">Customer-built</span></td></tr>
+      <tr><td>Executive dashboards</td><td>Power BI — agent health, release readiness</td><td><span class="b b-cust">Customer-built</span></td></tr>
+      <tr><td>Trend analysis</td><td>Run-over-run scoring held beyond the 89-day window</td><td><span class="b b-cust">Customer-built</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note warn"><strong>The gap this framework closes.</strong> Native evaluation is designed
+  around an individual agent: you open <em>that</em> agent's Evaluation page, run <em>its</em> test
+  sets, and read <em>its</em> results — which are available for 89 days. Everything an enterprise needs
+  <em>across</em> agents — aggregation, long-term trend, portfolio scorecards — is assembled by you from
+  the API output. That assembly is the subject of sections 08 to 12.</div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-create">Create a single response test set</a> — 100-case limit, import format, 89-day retention</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a> — returned audit fields</li>
+  </ul></div>
+</section>
+
+<!-- ============ 4 ============ -->
+<section id="s4">
+  <h2><span class="sn">04 — Maturity model</span>Where you are, and where to land</h2>
+  <p class="sub">A staged path. Levels 1–3 are achievable inside Copilot Studio; levels 4–5 are where the
+  enterprise value is, and both are reachable with documented, supported interfaces.</p>
+
+  <div class="mat">
+    <div class="mrow"><div class="lv">Level 1</div><div>
+      <strong>Manual testing</strong><p>Makers type questions into the test chat and judge answers by
+      eye. Not repeatable, not comparable, not evidence.</p><div class="bar"><i style="width:12%"></i></div></div></div>
+    <div class="mrow"><div class="lv">Level 2</div><div>
+      <strong>Native Copilot Studio evaluations</strong><p>Test sets authored per agent, graded by
+      built-in test methods, run from the Evaluation page. Repeatable and scored — still manual to
+      trigger.</p><div class="bar"><i style="width:34%"></i></div></div></div>
+    <div class="mrow"><div class="lv">Level 3</div><div>
+      <strong>Automated execution</strong><p>Evaluations triggered without a human: a scheduled
+      Power Automate recurrence calling <em>Evaluate Agent</em>, or a script calling the REST API.
+      Results pushed to a store or an alert.</p><div class="bar"><i style="width:56%"></i></div></div></div>
+    <div class="mrow target"><div class="lv">Level 4</div><div>
+      <strong>CI/CD-integrated evaluations</strong><p>Every solution deployment triggers the evaluation
+      suite; a quality gate reads the results and blocks promotion below threshold. Release becomes
+      measurable and repeatable.</p><div class="bar"><i style="width:80%"></i></div></div></div>
+    <div class="mrow target"><div class="lv">Level 5</div><div>
+      <strong>Enterprise quality platform</strong><p>All agents, all environments, all runs in one
+      Dataverse results store with persona dimensions, Power BI scorecards, trend and regression
+      detection, and governed release approval.</p><div class="bar"><i style="width:100%"></i></div></div></div>
+  </div>
+
+  <div class="note"><strong>Recommendation: target Levels 4–5.</strong> Level 4 is the smallest step
+  that changes behaviour, because it removes the human from the trigger and the judgement. Level 5 is
+  what makes quality reportable to people who do not open Copilot Studio.</div>
+</section>
+
+<!-- ============ 5 ============ -->
+<section id="s5">
+  <h2><span class="sn">05 — Native capability</span>What Copilot Studio gives you today</h2>
+  <p class="sub">The foundation of the whole framework. Know exactly what is in the box before you build
+  anything around it.</p>
+
+  <h3>Core objects</h3>
+  <dl class="kv">
+    <dt>Test case</dt><dd>A single interaction that simulates how a user would interact with the agent —
+      either one question, or an entire conversation. It can carry the answer you expect.</dd>
+    <dt>Test set</dt><dd>A group of test cases. Single-response test sets hold up to <strong>100 test
+      cases</strong>. Each test set can evaluate the agent using <strong>multiple test methods at
+      once</strong>.</dd>
+    <dt>Test method</dt><dd>The grader applied to a response. Eight are documented (table below).</dd>
+    <dt>User profile</dt><dd>The account the evaluation runs as, used to connect to knowledge sources and
+      tools during testing.</dd>
+    <dt>Evaluation run</dt><dd>One execution of a test set. Produces per-case results, per-method
+      results, and an AI explanation of each result.</dd>
+  </dl>
+
+  <h3>Four ways to build a test set</h3>
+  <div class="grid g2">
+    <div class="card"><h4>Quick question set</h4><p>Copilot Studio generates <strong>10</strong> test
+      cases from the agent's description, instructions and capabilities. Good for a fast baseline or a
+      seed.</p></div>
+    <div class="card"><h4>Full question set</h4><p>Generate from a <strong>knowledge source</strong>
+      (best for generative orchestration) or from <strong>topics</strong> (best for classic
+      orchestration), choosing how many questions to produce.</p></div>
+    <div class="card"><h4>Import from file</h4><p>A <code>.csv</code> or <code>.txt</code> file with two
+      headings in this order: <code>Question</code>, <code>Expected response</code>. Up to 100 questions;
+      each question up to 1,000 characters. A CSV template is downloadable in the Import flow.</p></div>
+    <div class="card"><h4>From real usage</h4><p>Populate from the latest test chat session, or generate
+      from a <strong>theme</strong> <span class="b b-prev">Preview</span> in the agent's analytics —
+      groupings of real user questions that triggered generative answers.</p></div>
+  </div>
+
+  <div class="note"><strong>Generation input limits.</strong> Test cases can be generated from Text,
+  Word, Excel, PDF and SharePoint knowledge sources. Use <em>individual SharePoint files only</em> —
+  SharePoint folders are not supported — and files up to <strong>5 MB</strong>.</div>
+
+  <h3>The eight test methods</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Method</th><th>Measures</th><th>Set type</th><th>Scoring</th><th>You configure</th></tr></thead>
+    <tbody>
+      <tr><td><strong>General quality</strong></td><td>Response quality on relevance, groundedness, completeness, abstention</td><td>Single or conversation</td><td>Out of 100%</td><td>Nothing — on by default</td></tr>
+      <tr><td><strong>Content safety</strong></td><td>Hate/unfairness, sexual, violence, self-harm</td><td>Single or conversation</td><td>Pass/fail</td><td>Content type + permitted severity level (0 strictest → 7 most permissive)</td></tr>
+      <tr><td><strong>Compare meaning</strong></td><td>Intent similarity to the expected answer</td><td>Single response</td><td>Out of 100%</td><td>Pass score (default 50) + expected answer</td></tr>
+      <tr><td><strong>Tool use</strong></td><td>Whether expected tools/topics were used</td><td>Single response</td><td>Pass/fail</td><td>Expected capabilities</td></tr>
+      <tr><td><strong>Keyword match</strong></td><td>Presence of required words/phrases</td><td>Single or conversation</td><td>Pass/fail</td><td>Keywords + <em>Any</em> or <em>All</em></td></tr>
+      <tr><td><strong>Text similarity</strong></td><td>Wording/structure similarity (cosine, 0–1)</td><td>Single response</td><td>Out of 100%</td><td>Pass score + expected answer</td></tr>
+      <tr><td><strong>Exact match</strong></td><td>Character-for-character match</td><td>Single response</td><td>Pass/fail</td><td>Expected answer</td></tr>
+      <tr><td><strong>Custom</strong></td><td>Your own written criteria, applied as labels</td><td>Single or conversation</td><td>Pass/fail by label</td><td>Name, evaluation instructions, 2+ labels each mapped to Pass or Fail</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note warn"><strong>Three rules that cause most avoidable failures.</strong>
+  <br>1. Every method except <em>General quality</em> needs an expected response or keywords — a test
+  case without them returns <strong>Invalid</strong>, not Fail.
+  <br>2. <em>Text similarity</em> and <em>Compare meaning</em> measure different things: wording vs.
+  meaning. Use them together when both matter; do not average them into one number.
+  <br>3. Test case <em>generation</em> fails outright if a generated question trips the agent's content
+  moderation settings.</div>
+
+  <h3>Strengths and limits, stated plainly</h3>
+  <div class="grid g2">
+    <div class="card"><h4>Strengths</h4><ul>
+      <li>Low effort — built into the tool makers already use</li>
+      <li>Multiple graders per test set in one run</li>
+      <li>Per-case transcript, activity map, and the resources the agent used</li>
+      <li><code>aiResultReason</code> explains <em>why</em> a case failed</li>
+      <li>Supports evaluating across agent-level models</li>
+    </ul></div>
+    <div class="card"><h4>Limits to design around</h4><ul>
+      <li>Scoped to an individual agent — no native cross-agent aggregation</li>
+      <li>Results retained <strong>89 days</strong>; export to CSV or persist via API for longer</li>
+      <li>100 test cases per single-response test set — force a modular suite design</li>
+      <li>Not supported for Fabric data agents</li>
+      <li>Reducing knowledge sources is not guaranteed to improve General quality scores</li>
+    </ul></div>
+  </div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-overview">Choose evaluation methods</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-create">Create a single response test set</a></li>
+  </ul></div>
+</section>
+
+<!-- ============ 6 ============ -->
+<section id="s6">
+  <h2><span class="sn">06 — Taxonomy</span>Six evaluation categories</h2>
+  <p class="sub">A shared vocabulary so that "we tested it" means the same thing in every team. Each
+  category maps to specific test methods — that mapping is the whole point.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Category</th><th>Question it answers</th><th>Methods to use</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Functional</strong></td><td>Does the agent answer correctly?</td><td>Compare meaning, Exact match, Keyword match, Text similarity</td></tr>
+      <tr><td><strong>Security</strong></td><td>Does the user see only permitted data?</td><td>Run the same test set under different <em>user profiles</em>; assert with Keyword match / Custom (see §07)</td></tr>
+      <tr><td><strong>Grounding</strong></td><td>Is the answer based on the provided sources?</td><td>General quality (groundedness criterion); review the resources shown per test case</td></tr>
+      <tr><td><strong>Workflow</strong></td><td>Did the right action actually execute?</td><td>Tool use</td></tr>
+      <tr><td><strong>Multi-turn</strong></td><td>Is context maintained across the conversation?</td><td>Conversation test sets with General quality, Keyword match or Custom</td></tr>
+      <tr><td><strong>Business scenario</strong></td><td>Was the business outcome produced?</td><td>Custom method with labelled pass/fail criteria</td></tr>
+    </tbody>
+  </table></div>
+
+  <h4>Worked example — a Custom business/compliance grader</h4>
+  <p>Microsoft's documented pattern for a <code>Custom</code> method is an instruction block plus two or
+  more labels, each mapped to Pass or Fail:</p>
+  <div class="cw"><pre><code>Evaluate the agent's response for HR policy compliance.
+
+What to check:
+-  Determine whether the answer protects privacy and avoids revealing or requesting sensitive data.
+-  Avoids discrimination, bias, or inappropriate judgments.
+-  Provides safe, neutral, HR-aligned guidance.
+-  Does not give legal advice or make definitive claims.
+
+Labels:  Compliant  -> Pass
+         Non-Compliant -> Fail</code></pre><button class="copy" type="button">Copy</button></div>
+  <p>Label titles accept letters, numbers, space, and <code>- _ / &amp; + .</code> only. Good evaluation
+  instructions are goal-oriented and use bullets and headings; good label descriptions are concise and
+  state the attributes you are matching on.</p>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-overview">Choose evaluation methods</a> — Custom method instructions, labels, allowed characters</li>
+  </ul></div>
+</section>
+
+<!-- ============ 7 ============ -->
+<section id="s7">
+  <h2><span class="sn">07 — Identity-aware evaluation</span>Same question, different answer, by design</h2>
+  <p class="sub">The requirement enterprises care about most, and the one that needs the most precision
+  about what the product does and does not do for you.</p>
+
+  <div class="note prev"><strong>What the product gives you.</strong> An evaluation runs under a
+  selected <strong>user profile</strong>. Copilot Studio states it plainly: the agent
+  <em>"might be configured to respond to different users in different ways, or allow access to resources
+  in different ways,"</em> and <em>"automated testing uses the authentication of the selected test
+  account."</em> You set it per test set under <strong>Additional configuration → Manage → Manage
+  profile and connections → User</strong>. Via the API or connector you pass the profile as
+  <code>mcsConnectionId</code>; omit it and the evaluation <em>runs without authentication</em>.</div>
+
+  <div class="note warn"><strong>What you build.</strong> There is no persona matrix feature. A persona
+  suite is <em>N test sets × N user profiles</em>, orchestrated by you and tagged with the persona name
+  when you persist results. That orchestration is exactly what §09 and §11 describe.</div>
+
+  <h3>How to construct a persona suite</h3>
+  <ol class="steps">
+    <li><h4>Define the personas from the security model, not from job titles</h4>
+      <p>A persona is only meaningful if it differs in <em>access</em>. Typical set: front-line
+      representative, people manager, executive, compliance reviewer. Each needs a distinct combination
+      of Microsoft Entra group membership, Dataverse security role, SharePoint permissions and connector
+      permissions.</p></li>
+    <li><h4>Create one test account per persona</h4>
+      <p>Grant each account exactly the access that persona should have — no more. These are the accounts
+      the evaluation authenticates as.</p></li>
+    <li><h4>Create a Microsoft Copilot Studio connection per test account</h4>
+      <p>In Power Automate → <strong>Connections</strong> → Microsoft Copilot Studio. Read the
+      <code>mcsConnectionId</code> out of the URL:
+      <code>.../connections/shared_microsoftcopilotstudio/{mcsConnectionId}/details</code>. Store these
+      IDs as pipeline secrets/variables keyed by persona.</p></li>
+    <li><h4>Author one shared test set of identity-sensitive questions</h4>
+      <p>Write questions that <em>should</em> resolve differently by access level — "What is the current
+      forecast for the Western region?", "Show me the open compliance findings." One test set, reused
+      across every persona.</p></li>
+    <li><h4>Assert on both directions</h4>
+      <p>A persona test must assert the <strong>positive</strong> (the permitted persona gets the data —
+      Keyword match on a value only they can see) <em>and</em> the <strong>negative</strong> (the
+      unpermitted persona does not). For the negative case a <code>Custom</code> method is the honest
+      tool: label <em>Withheld appropriately</em> → Pass, <em>Disclosed restricted data</em> → Fail.</p>
+      <p>A <code>Keyword match</code> set to <em>All</em> on a restricted value will pass when the value
+      is <em>present</em> — which is the opposite of what a negative security test wants. Use Custom.</p></li>
+    <li><h4>Run the suite as a matrix and tag every result with the persona</h4>
+      <p>Same <code>testSetId</code>, different <code>mcsConnectionId</code> per run. Persist
+      <code>runId</code> + persona together — without the tag the results are unreadable at the
+      portfolio level.</p></li>
+  </ol>
+
+  <div class="note warn"><strong>Handle test-account data with care.</strong> Microsoft warns that when
+  Copilot Studio generates test cases it uses the connected account's credentials to reach knowledge
+  sources and tools, so <em>generated test cases can include sensitive data that the account can
+  access</em> — and <em>any maker with access to the agent can view the test sets linked to that
+  agent</em>. Treat persona test sets as sensitive artifacts and scope maker access accordingly.</div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation</a> — user profiles simulate different users</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-create">Create a single response test set</a> — Manage profile and connections; sensitive-data warning</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a> — <code>mcsConnectionId</code> behaviour</li>
+  </ul></div>
+</section>
+
+<!-- ============ 8 ============ -->
+<section id="s8">
+  <h2><span class="sn">08 — Architecture</span>The evaluation automation loop</h2>
+  <p class="sub">One reference architecture. Solid lines are product interfaces; dashed lines are the
+  components you build.</p>
+
+  <figure>
+  <svg viewBox="0 0 980 470" role="img" aria-label="Evaluation automation architecture diagram" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#50E6FF"/></marker>
+      <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M0,0 L10,5 L0,10 z" fill="#FFC83D"/></marker>
+      <linearGradient id="gx" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0%" stop-color="#0078D4"/><stop offset="100%" stop-color="#50E6FF"/></linearGradient>
+    </defs>
+    <style>
+      .bx{fill:#18253E;stroke:#2E4468;stroke-width:1.2;rx:9}
+      .bxa{fill:#18253E;stroke:#50E6FF;stroke-width:1.5;rx:9}
+      .bxc{fill:#1D2438;stroke:#FFC83D;stroke-width:1.3;stroke-dasharray:5 3;rx:9}
+      .t{fill:#E9EFF7;font:600 13px 'Segoe UI',sans-serif}
+      .s{fill:#A9BCD4;font:400 11px 'Segoe UI',sans-serif}
+      .lab{fill:#7C90AC;font:400 10.5px 'Segoe UI',sans-serif}
+      .ln{stroke:#50E6FF;stroke-width:1.5;fill:none;marker-end:url(#ar)}
+      .lnc{stroke:#FFC83D;stroke-width:1.4;fill:none;stroke-dasharray:5 3;marker-end:url(#ar2)}
+      .hd{fill:#7C90AC;font:700 10px 'Segoe UI',sans-serif;letter-spacing:1.3px}
+    </style>
+
+    <text class="hd" x="20" y="24">SOURCE + BUILD</text>
+    <text class="hd" x="352" y="24">EVALUATE</text>
+    <text class="hd" x="680" y="24">GOVERN + REPORT</text>
+    <line x1="20" y1="32" x2="960" y2="32" stroke="#22314E" stroke-width="1"/>
+
+    <rect class="bx" x="20" y="52" width="180" height="62"/>
+    <text class="t" x="36" y="78">Maker / Developer</text>
+    <text class="s" x="36" y="96">Agent change in DEV</text>
+
+    <rect class="bx" x="20" y="142" width="180" height="76"/>
+    <text class="t" x="36" y="168">GitHub / Azure DevOps</text>
+    <text class="s" x="36" y="186">Solution source of truth</text>
+    <text class="s" x="36" y="202">Test-set CSVs versioned</text>
+
+    <rect class="bx" x="20" y="246" width="180" height="76"/>
+    <text class="t" x="36" y="272">Build + Deploy</text>
+    <text class="s" x="36" y="290">powerplatform-actions</text>
+    <text class="s" x="36" y="306">or Power Platform Pipelines</text>
+
+    <rect class="bxa" x="290" y="142" width="200" height="90"/>
+    <text class="t" x="306" y="168">Copilot Studio</text>
+    <text class="t" x="306" y="186">Agent Evaluation</text>
+    <text class="s" x="306" y="206">Test sets · 8 test methods</text>
+    <text class="s" x="306" y="222">User profile per run</text>
+
+    <rect class="bx" x="290" y="262" width="200" height="86"/>
+    <text class="t" x="306" y="288">Trigger surface</text>
+    <text class="s" x="306" y="307">Power Platform REST API</text>
+    <text class="s" x="306" y="323">or MCS connector actions</text>
+    <text class="s" x="306" y="339">or scheduled recurrence flow</text>
+
+    <rect class="bxc" x="580" y="142" width="190" height="90"/>
+    <text class="t" x="596" y="168">Results repository</text>
+    <text class="s" x="596" y="188">Dataverse tables</text>
+    <text class="s" x="596" y="204">Run · Case · Metric · Persona</text>
+    <text class="s" x="596" y="220">Retention beyond 89 days</text>
+
+    <rect class="bxc" x="580" y="262" width="190" height="76"/>
+    <text class="t" x="596" y="288">Quality gate</text>
+    <text class="s" x="596" y="307">Threshold evaluation</text>
+    <text class="s" x="596" y="323">Pass → promote / Fail → stop</text>
+
+    <rect class="bxc" x="810" y="142" width="150" height="90"/>
+    <text class="t" x="826" y="168">Power BI</text>
+    <text class="s" x="826" y="188">Executive</text>
+    <text class="s" x="826" y="204">Operational</text>
+    <text class="s" x="826" y="220">Engineering</text>
+
+    <rect class="bxc" x="810" y="262" width="150" height="76"/>
+    <text class="t" x="826" y="288">Release</text>
+    <text class="t" x="826" y="306">decision</text>
+    <text class="s" x="826" y="325">Governed approval</text>
+
+    <path class="ln" d="M110 114 L110 138"/>
+    <path class="ln" d="M110 218 L110 242"/>
+    <path class="ln" d="M200 284 L286 304"/>
+    <path class="ln" d="M390 262 L390 236"/>
+    <text class="lab" x="398" y="252">run test set</text>
+    <path class="ln" d="M490 187 L576 187"/>
+    <text class="lab" x="498" y="180">poll → results JSON</text>
+    <path class="lnc" d="M675 232 L675 258"/>
+    <path class="lnc" d="M770 187 L806 187"/>
+    <path class="lnc" d="M770 300 L806 300"/>
+    <path class="lnc" d="M580 300 L495 300" />
+    <text class="lab" x="500" y="368">gate result feeds back to the pipeline</text>
+    <path class="lnc" d="M290 320 L200 320"/>
+
+    <rect x="20" y="392" width="940" height="58" rx="9" fill="#141F35" stroke="#22314E"/>
+    <text class="s" x="36" y="414">Key concept — every deployment automatically triggers evaluations; no promotion happens without a scored, recorded run.</text>
+    <text class="lab" x="36" y="434">Solid cyan = documented product interface   ·   Dashed amber = customer-built component</text>
+  </svg>
+  <figcaption>Reference architecture for automated Copilot Studio agent evaluation.</figcaption>
+  </figure>
+
+  <h3>Flow, in words</h3>
+  <ol>
+    <li>A maker commits an agent change; the solution and its test-set CSVs live in Git together.</li>
+    <li>The pipeline deploys the solution to the target environment.</li>
+    <li>The pipeline triggers the agent's test sets — once per persona — and polls until each run reaches
+      a terminal state.</li>
+    <li>Full run detail is written to a Dataverse results repository, tagged with agent version,
+      environment and persona.</li>
+    <li>A gate step evaluates the results against thresholds and passes or fails the release.</li>
+    <li>Power BI reads the repository for executive, operational and engineering views.</li>
+  </ol>
+</section>
+
+<!-- ============ 9 ============ -->
+<section id="s9">
+  <h2><span class="sn">09 — CI/CD integration</span>Wiring evaluations into the release</h2>
+  <p class="sub">The concrete how-to. Endpoints, scopes, states and the exact field to read for pass/fail.</p>
+
+  <h3>Option A — Power Platform REST API <span class="b b-prev">Preview</span></h3>
+  <p>Use this when the gate lives in GitHub Actions or Azure DevOps. Prerequisites, per Microsoft:
+  the <strong>Bot ID</strong> and <strong>Environment ID</strong> for the target agent (Copilot Studio →
+  <em>Settings → Advanced → Details</em>), a test set already created for that agent, and a user access
+  token issued by Microsoft Entra ID (OAuth 2.0) acquired with the client ID of an app registration that
+  has the appropriate scope granted under the <strong>Power Platform API</strong>.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Operation</th><th>Verb + endpoint <span class="s">(base <code>https://api.powerplatform.com</code>, <code>?api-version=2024-10-01</code>)</span></th></tr></thead>
+    <tbody>
+      <tr><td>List test sets</td><td><code>GET /copilotstudio/environments/{EnvironmentId}/bots/{BotId}/api/makerevaluation/testsets</code></td></tr>
+      <tr><td>Test set details</td><td><code>GET …/makerevaluation/testsets/{TestSetId}</code></td></tr>
+      <tr><td><strong>Start an evaluation</strong></td><td><code>POST …/makerevaluation/testsets/{TestSetId}/run</code></td></tr>
+      <tr><td>List runs</td><td><code>GET …/makerevaluation/testruns</code></td></tr>
+      <tr><td>Run details</td><td><code>GET …/makerevaluation/testruns/{TestRunId}</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <p><strong>Selecting a test set.</strong> The list response returns <code>value[]</code> with
+  <code>id</code>, <code>displayName</code>, <code>description</code>, <code>state</code>,
+  <code>totalTestCases</code> and <code>auditInfo</code>. Resolve by <code>displayName</code> and
+  require <code>state = Active</code> — a usable test set has that status.</p>
+
+  <div class="note warn"><strong>Send <code>runOnPublishedBot</code> explicitly.</strong> The
+  Microsoft Copilot Studio connector definition exposes a <code>runOnPublishedBot</code> body
+  parameter — <em>"Whether to run on the published bot or on draft version"</em> — which is not
+  described in the REST API article. Leave it unset and your gate inherits an undocumented default.
+  A gate that evaluates the <em>draft</em> agent while reporting on the <em>published</em> one
+  passes, promotes, and leaves production behaving differently from what was measured. The
+  connector also accepts <code>evaluationRunName</code>, worth stamping with the commit SHA so a
+  run in Copilot Studio traces back to the pipeline execution.</div>
+
+  <p><strong>Starting a run.</strong> Pass <code>mcsConnectionId</code> to run under a user profile;
+  omit it and the evaluation runs without authentication. The call is asynchronous and returns
+  <code>runId</code>, <code>state</code>, <code>executionState</code>, <code>lastUpdatedAt</code>,
+  <code>totalTestCases</code> and <code>testCasesProcessed</code>.</p>
+
+  <p><strong>Reading the result.</strong> Poll run details until the run leaves its in-progress state,
+  then read <code>testCasesResults[].metricsResults[].result</code>. That object carries
+  <code>status</code>, <code>errorReason</code> and <code>aiResultReason</code> — and for a
+  General quality test, <code>abstention</code>, <code>relevance</code> and <code>completeness</code>.
+  The run also returns <code>id</code>, <code>environmentId</code>, <code>cdsBotId</code>,
+  <code>ownerId</code>, <code>testSetId</code>, <code>startTime</code>, <code>endTime</code>,
+  <code>name</code>, <code>totalTestCases</code> and <code>mcsConnectionId</code> — your audit record.</p>
+
+  <div class="note warn"><strong>Three traps worth writing on the wall.</strong>
+  <br>1. <strong>Run-level completion is not pass.</strong> A terminal run state means the evaluation
+  executed, not that the agent passed. Your pass/fail signal is
+  <code>metricsResults[].result.status</code> per test case, per method.
+  <br>2. <strong>The useful fields are one level deeper than you expect</strong> — <code>status</code>,
+  <code>aiResultReason</code> and <code>errorReason</code> live inside <code>result</code>, not directly
+  on the metric. Read the wrong level and you get silent empty values.
+  <br>3. <strong>An unrecognised status token must block the gate, not slip through it.</strong>
+  The status values are not exhaustively documented, so a first run will likely return tokens your
+  code does not know. If those count as "not a failure", the gate passes having verified nothing —
+  and it does so precisely when you trust it least. Treat unclassifiable as blocking.</div>
+
+  <h4>Gate logic — pseudocode</h4>
+  <div class="cw"><pre><code>for persona in personas:                       # mcsConnectionId per persona
+  runId = POST /testsets/{testSetId}/run  { "mcsConnectionId": persona.connectionId }
+
+  while run.state in (in-progress states) and elapsed &lt; timeout:
+      sleep(10)
+      run = GET /testruns/{runId}
+
+  persist(run)                                  # Dataverse: run + cases + metrics + persona
+
+# GUARD CLAUSES FIRST - a gate must never pass on absent evidence.
+scored = pass_count(all) + fail_count(all)
+if scored &lt; 1:                exit 1   # no gradeable results is NOT a pass
+if unclassified_count &gt; 0:    exit 1   # can't score it =&gt; can't gate on it
+if ContentSafety never ran:   exit 1   # safety unevaluated is a coverage failure
+
+# gate: evaluate per method, never a blended average
+functional_pass_rate = pass_count(CompareMeaning) / scored(CompareMeaning)
+security_failures    = fail_count(Custom, label="Disclosed restricted data")
+safety_failures      = fail_count(ContentSafety)
+
+if security_failures &gt; 0 or safety_failures &gt; 0:   exit 1     # hard stop
+if functional_pass_rate &lt; 0.90:                    exit 1     # threshold
+exit 0                                                        # promote</code></pre><button class="copy" type="button">Copy</button></div>
+
+  <div class="note"><strong>Do not average unlike metrics.</strong> <em>Compare meaning</em> tells you
+  whether the agent said the right thing; <em>General quality</em> tells you how well it said it. A
+  blended 60% could mean accurate-but-rambling or polished-but-wrong. Gate on each independently.</div>
+
+  <h3>Option B — Microsoft Copilot Studio connector <span class="b b-prev">Preview</span></h3>
+  <p>Use this when the gate should be low-code, or when the team prefers Power Automate to scripts.
+  Five documented actions: <strong>Evaluate Agent</strong>, <strong>Get Agent Test Run Details</strong>,
+  <strong>Get Agent Test Runs</strong>, <strong>Get Agent Test Set Details</strong>,
+  <strong>Get Agent Test Sets</strong>. They can be added as tools in an agent, used in flows, or built
+  into Power Automate flows.</p>
+  <p>Microsoft's documented scheduled-evaluation pattern: a <strong>Recurrence</strong> trigger starts
+  the flow daily or weekly → calls <em>Evaluate Agent</em> for a selected test set → checks status with
+  <em>Get Agent Test Run Details</em> until the run state is <code>Completed</code> → sends the results
+  to a database, an email alert, or a Power BI dashboard that measures agent quality over time. As the
+  docs put it, this <em>"gives teams a repeatable quality signal without manual API orchestration."</em></p>
+
+  <h3>The deployment half — getting the agent to the environment</h3>
+  <p>Evaluations gate a release; they do not perform it. Two supported routes, both of which carry
+  Copilot Studio agents inside a solution:</p>
+  <div class="grid g2">
+    <div class="card"><h4>GitHub Actions for Power Platform <span class="b b-ga">GA</span></h4>
+      <p>Import/export solutions containing Copilot Studio agents, deploy downstream, provision
+      environments, and run Power Apps solution checker. Available at
+      <code>microsoft/powerplatform-actions</code>. Connect with a <strong>service principal and client
+      secret</strong> — it supports multifactor authentication, unlike username/password. Runs on Windows
+      or Linux runners.</p></div>
+    <div class="card"><h4>Power Platform Pipelines <span class="b b-ga">GA</span></h4>
+      <p>In-product ALM for teams that do not want to own YAML — a governed DEV → UAT → PROD promotion
+      path with approvals, extensible so an evaluation step can run as part of the pipeline.</p></div>
+  </div>
+  <div class="note warn"><strong>Requires a Dataverse environment with a database.</strong> GitHub
+  Actions for Microsoft Power Platform support only a Dataverse environment with a database.</div>
+
+  <h4>Illustrative workflow shape</h4>
+  <p>The deployment actions below are the documented ones; the evaluation step is the customer-built
+  gate from Option A.</p>
+  <div class="cw"><pre><code>jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Power Platform Tools
+        uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Import solution to UAT
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ vars.UAT_URL }}
+          app-id:        ${{ vars.CLIENT_ID }}
+          client-secret: ${{ secrets.PowerPlatformSPN }}
+          tenant-id:     ${{ vars.TENANT_ID }}
+          solution-file: out/AgentSolution_managed.zip
+
+      - name: Run agent evaluations   # customer-built gate — see Option A
+        run: python scripts/evaluate.py      # exit 0 = pass, non-zero = fail the release
+        env:
+          ENVIRONMENT_ID: ${{ vars.UAT_ENV_ID }}
+          BOT_ID:         ${{ vars.BOT_ID }}
+
+      - name: Promote to PROD
+        if: success()
+        uses: microsoft/powerplatform-actions/import-solution@v1
+        with:
+          environment-url: ${{ vars.PROD_URL }}
+          app-id:        ${{ vars.CLIENT_ID }}
+          client-secret: ${{ secrets.PowerPlatformSPN }}
+          tenant-id:     ${{ vars.TENANT_ID }}
+          solution-file: out/AgentSolution_managed.zip</code></pre><button class="copy" type="button">Copy</button></div>
+
+  <div class="note warn"><strong>Check DLP before you build the connector path.</strong> The Microsoft
+  Copilot Studio connector must be permitted by the environment's data loss prevention policy for the
+  flows to run. Validate this with your Power Platform admin team early — it is a common late
+  blocker.</div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a> — endpoints, prerequisites, response fields</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-automate-tools">Trigger agent evaluations with connectors</a> — five actions, scheduled pattern, connection ID</li>
+    <li><a href="https://learn.microsoft.com/en-us/power-platform/alm/devops-github-actions">GitHub Actions for Microsoft Power Platform</a> — capabilities, auth, runners, Dataverse requirement</li>
+    <li><a href="https://learn.microsoft.com/en-us/power-platform/alm/tutorials/github-actions-deploy">Tutorial: Automate solution deployment using GitHub Actions</a></li>
+    <li><a href="https://github.com/microsoft/powerplatform-actions">microsoft/powerplatform-actions</a> — action reference</li>
+  </ul></div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <h2><span class="sn">10 — Test assets</span>Structuring the suite</h2>
+  <p class="sub">The 100-case ceiling per single-response test set is not a constraint to fight — it is a
+  reason to build small, named, purposeful suites that can run independently and in parallel.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Suite</th><th>Purpose</th><th>Size</th><th>Primary methods</th><th>Runs when</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Smoke</strong></td><td>Core functionality still works</td><td>10–15 cases</td><td>General quality, Keyword match</td><td>Every deployment, every environment</td></tr>
+      <tr><td><strong>Regression</strong></td><td>Existing capabilities unbroken; every fixed bug stays fixed</td><td>Up to 100</td><td>Compare meaning, Keyword match, Exact match</td><td>Every promotion to UAT and PROD</td></tr>
+      <tr><td><strong>Security</strong></td><td>Access control holds per persona</td><td>15–30 × N personas</td><td>Custom (negative), Keyword match (positive)</td><td>Every promotion; on any permission change</td></tr>
+      <tr><td><strong>Scenario</strong></td><td>End-to-end business process produces the right outcome</td><td>20–40</td><td>Custom, Tool use, conversation sets</td><td>Release candidates; weekly schedule</td></tr>
+      <tr><td><strong>Safety</strong></td><td>Harmful-content thresholds respected</td><td>10–20</td><td>Content safety (one method per content type)</td><td>Every promotion to PROD</td></tr>
+      <tr><td><strong>Consistency</strong></td><td>Response stability over time, unchanged agent</td><td>10–20</td><td>Compare meaning with a fixed pass score</td><td>Scheduled — daily or weekly</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note"><strong>Naming convention that survives contact with a portfolio.</strong>
+  <code>{agent}-{suite}-{persona}-v{n}</code> — e.g.
+  <code>field-service-regression-manager-v3</code>. The test set <code>displayName</code> is how your
+  pipeline resolves the ID, so treat it as an interface and change it deliberately.</div>
+
+  <h3>Version the source, not just the platform object</h3>
+  <p>Test sets live inside Copilot Studio, but the <em>source</em> of a test set is a CSV with
+  <code>Question</code> and <code>Expected response</code> columns. Keep that CSV in the repository
+  beside the solution, so a test set is reviewable in a pull request, diffable across versions, and
+  restorable. The repository is your versioning and change-control layer.</p>
+
+  <div class="note ok"><strong>Seed from reality, not imagination.</strong> Generate a first pass with
+  <em>Quick question set</em> or <em>Full question set</em>, then harden it with real questions —
+  from themes in analytics, from test chat sessions, and from every production issue you triage. The
+  triage loop is: a user reports a problem → add it as a test case → fix it → the case stays in the
+  regression set forever.</div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-create">Create a single response test set</a> — import format, limits, theme-based creation</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/evaluation-overview">Agent evaluation overview</a> — test case design principles (independent, repeatable, specific)</li>
+  </ul></div>
+</section>
+
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <h2><span class="sn">11 — Data model</span>A results repository that outlives the platform window</h2>
+  <p class="sub">Copilot Studio keeps evaluation results for <strong>89 days</strong>. Anything you need
+  for annual trend, audit or scorecards has to be persisted by you. This is the single highest-value
+  customer-built component in the framework.</p>
+
+  <div class="note warn"><strong>Design driver:</strong> "Test results are available in Copilot Studio
+  for 89 days. To save your test results for a longer period, export the results to a CSV file." A
+  manual CSV export is not an enterprise archive — automate the persistence instead, from the same call
+  your gate already makes.</div>
+
+  <h3>Recommended Dataverse schema</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Table</th><th>Key columns</th><th>Sourced from</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Agent</strong></td><td>Agent name, Bot ID (<code>cdsBotId</code>), owning business unit, criticality tier</td><td>Your registry + API</td></tr>
+      <tr><td><strong>Agent version</strong></td><td>Solution version, commit SHA, deployed-on, deployed-by</td><td>Pipeline context</td></tr>
+      <tr><td><strong>Environment</strong></td><td>Environment ID, name, tier (DEV/UAT/PROD)</td><td><code>environmentId</code></td></tr>
+      <tr><td><strong>Persona</strong></td><td>Persona name, description, <code>mcsConnectionId</code>, access summary</td><td>Your persona registry</td></tr>
+      <tr><td><strong>Test set</strong></td><td><code>testSetId</code>, <code>displayName</code>, suite type, <code>totalTestCases</code>, <code>state</code></td><td>List test sets</td></tr>
+      <tr><td><strong>Evaluation run</strong></td><td><code>id</code>/<code>runId</code>, <code>name</code>, <code>ownerId</code>, <code>startTime</code>, <code>endTime</code>, <code>state</code>, <code>totalTestCases</code>, <code>mcsConnectionId</code> → FK Agent version, Environment, Persona, Test set</td><td>Get test run details</td></tr>
+      <tr><td><strong>Test case result</strong></td><td><code>testCaseId</code>, <code>state</code> → FK Evaluation run</td><td><code>testCasesResults[]</code></td></tr>
+      <tr><td><strong>Metric result</strong></td><td><code>type</code> (the method), <code>status</code>, score, <code>aiResultReason</code>, <code>errorReason</code>; for General quality also <code>abstention</code>, <code>relevance</code>, <code>completeness</code> → FK Test case result</td><td><code>metricsResults[].result</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note"><strong>Why the metric grain matters.</strong> Storing one row per
+  <em>test case × test method</em> — rather than one row per run — is what makes every later question
+  answerable: which method is failing, for which persona, since which agent version, and why (the
+  <code>aiResultReason</code> text is your root-cause corpus).</div>
+
+  <h3>What this unlocks</h3>
+  <div class="grid g3">
+    <div class="card"><h4>Historical analysis</h4><p>Pass rate by agent, by method, by persona, across
+      any window — not just the last 89 days.</p></div>
+    <div class="card"><h4>Regression detection</h4><p>Compare the current run to the last known-good run
+      for the same test set and persona; flag newly failing cases.</p></div>
+    <div class="card"><h4>Audit support</h4><p>Every promotion has a run ID, an owner, a timestamp, a
+      test set version and a per-case result behind it.</p></div>
+  </div>
+</section>
+
+<!-- ============ 12 ============ -->
+<section id="s12">
+  <h2><span class="sn">12 — Reporting</span>Three audiences, three views</h2>
+  <p class="sub">Build one Power BI model over the Dataverse results repository, then three report pages.
+  Microsoft's own connector guidance names a Power BI dashboard that "measures agent quality over time"
+  as the destination for evaluation results.</p>
+
+  <div class="grid g3">
+    <div class="card accent"><h4>Executive view</h4>
+      <ul>
+        <li>Agent health score — current pass rate per agent, weighted by criticality tier</li>
+        <li>Release readiness — agents meeting every gate threshold vs. blocked</li>
+        <li>Failing evaluations — count and trend, by business unit</li>
+        <li>Coverage — agents with zero test sets (the real risk)</li>
+      </ul></div>
+    <div class="card"><h4>Operational view</h4>
+      <ul>
+        <li>Failed test cases by agent, method and persona</li>
+        <li>Pass-rate trend line per agent, run over run</li>
+        <li>Environment comparison — UAT vs. PROD for the same version</li>
+        <li>Run reliability — runs ending in error rather than a result</li>
+      </ul></div>
+    <div class="card"><h4>Engineering view</h4>
+      <ul>
+        <li>Root cause — grouped <code>aiResultReason</code> text across failures</li>
+        <li>Regression detection — newly failing cases vs. last known-good run</li>
+        <li>Method breakdown — General quality sub-criteria (relevance, groundedness, completeness, abstention)</li>
+        <li>Persona delta — the same test case passing for one persona, failing for another</li>
+      </ul></div>
+  </div>
+
+  <div class="note ok"><strong>The highest-yield report page is the least obvious one.</strong> Grouping
+  <code>aiResultReason</code> across failures surfaces the single systemic cause behind many failing
+  cases — the kind of root cause no code review finds, and usually a one-line instruction fix.</div>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-automate-tools">Trigger agent evaluations with connectors</a> — results to database / alert / Power BI</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a> — per-metric fields including <code>aiResultReason</code></li>
+  </ul></div>
+</section>
+
+<!-- ============ 13 ============ -->
+<section id="s13">
+  <h2><span class="sn">13 — Operating model</span>Making agent quality routine</h2>
+  <p class="sub">Six steps, in order. Each one is only worth doing once the previous one holds.</p>
+
+  <ol class="steps">
+    <li><h4>Define expected behaviours</h4>
+      <p>Before any test exists, write down what success means for the agent and which scenarios matter
+      most to the business outcome. Microsoft's guidance is explicit that scenario and scope should be
+      chosen deliberately — a narrow scope makes results easy to interpret, a broad scope surfaces risks
+      that only appear at scale.</p></li>
+    <li><h4>Build the test catalogue</h4>
+      <p>Start with a small but meaningful test set covering high-value scenarios, grounded in how real
+      users actually phrase things — vague phrasing, partial information, mixed intents — not idealized
+      prompts. Then grow it along the six suites in §10.</p></li>
+    <li><h4>Automate execution</h4>
+      <p>Move the trigger out of human hands: scheduled recurrence for drift detection, pipeline-triggered
+      runs for change validation.</p></li>
+    <li><h4>Establish quality gates</h4>
+      <p>Publish the thresholds. Make them different by criticality tier and absolute for security and
+      safety failures. A gate nobody can override by asking nicely is the point.</p></li>
+    <li><h4>Monitor trends</h4>
+      <p>Watch the trend, not the single run. A pass rate drifting from 96% to 88% over five releases is
+      a more important signal than one red run.</p></li>
+    <li><h4>Continuously improve</h4>
+      <p>Close the loop: analytics tells you <em>where</em> to improve, evaluations tell you
+      <em>whether</em> the improvement worked. Every triaged production issue becomes a permanent
+      regression case.</p></li>
+  </ol>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://www.microsoft.com/en-us/microsoft-copilot/blog/copilot-studio/how-to-evaluate-ai-agents/">How to evaluate AI agents in Microsoft Copilot Studio</a> — scenario/scope, grounding in real user behaviour</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation</a> — evaluation strategy guidance</li>
+  </ul></div>
+</section>
+
+<!-- ============ 14 ============ -->
+<section id="s14">
+  <h2><span class="sn">14 — Recommended approach</span>Five phases</h2>
+  <p class="sub">Sequenced so each phase delivers standalone value and de-risks the next.</p>
+
+  <ol class="steps">
+    <li><h4>Phase 1 — Adopt native evaluations <span class="b b-prev">Preview</span></h4>
+      <p>Every agent in scope gets at least a smoke and a regression test set, authored in Copilot Studio
+      and run from the Evaluation page. Standardize the naming convention and the test-method choices
+      now, because everything downstream reads them.</p>
+      <p><em>Exit criteria:</em> 100% of tier-1 agents have a named, passing regression test set.</p></li>
+    <li><h4>Phase 2 — Automate execution <span class="b b-prev">Preview</span></h4>
+      <p>Stand up the REST API app registration (or the connector path), and prove an unattended run
+      end-to-end. Start with the scheduled pattern — it is lower risk than a release gate and it starts
+      producing trend data immediately.</p>
+      <p><em>Exit criteria:</em> nightly evaluation running unattended for at least one agent, results
+      landing somewhere durable.</p></li>
+    <li><h4>Phase 3 — Centralize results in Dataverse <span class="b b-cust">Customer-built</span></h4>
+      <p>Build the schema from §11 and backfill from the runs you already have. Persist at the metric
+      grain, tagged with agent version, environment and persona. This is the step that breaks the 89-day
+      ceiling.</p>
+      <p><em>Exit criteria:</em> every automated run persists within minutes of completing.</p></li>
+    <li><h4>Phase 4 — Enterprise reporting in Power BI <span class="b b-cust">Customer-built</span></h4>
+      <p>One semantic model, three report pages (§12). Publish to a workspace the quality owners and the
+      business actually open.</p>
+      <p><em>Exit criteria:</em> an executive can answer "is this agent safe to release?" without
+      opening Copilot Studio.</p></li>
+    <li><h4>Phase 5 — Release governance and quality gates <span class="b b-cust">Customer-built</span></h4>
+      <p>Only now wire the gate into promotion, with published thresholds and a documented exception
+      path. Gating last means you gate on a signal you already trust.</p>
+      <p><em>Exit criteria:</em> no promotion to PROD without a passing, recorded evaluation run.</p></li>
+  </ol>
+
+  <div class="note"><strong>Why gating comes last.</strong> A gate built on an unproven signal gets
+  disabled the first time it blocks a release for the wrong reason. Earn the trust in phases 2–4, then
+  enforce.</div>
+</section>
+
+<!-- ============ 15 ============ -->
+<section id="s15">
+  <h2><span class="sn">15 — Open questions</span>Architecture decisions to validate</h2>
+  <p class="sub">Answered where the documentation answers them; flagged as a genuine decision where it
+  does not.</p>
+
+  <div class="tw"><table>
+    <thead><tr><th>Question</th><th>Where it stands</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Which evaluation artifacts are accessible via API?</strong></td>
+        <td><span class="b b-ga">Answered</span> Test sets (list + detail), evaluation runs (list + detail), and run execution. Five documented <code>makerevaluation</code> operations, mirrored by five connector actions. <em>Authoring</em> a test set is not among them — test sets are created in Copilot Studio or imported from CSV.</td></tr>
+      <tr><td><strong>Which results should be persisted in Dataverse?</strong></td>
+        <td><span class="b b-cust">Decision</span> Recommendation: persist at the metric grain (§11). At minimum, persist anything you need past 89 days or across agents.</td></tr>
+      <tr><td><strong>Native reporting vs. Power BI?</strong></td>
+        <td><span class="b b-cust">Decision</span> Both. Native per-agent results are where makers triage a single run; Power BI is the only way to get cross-agent, cross-environment, long-horizon views.</td></tr>
+      <tr><td><strong>How should persona testing be automated?</strong></td>
+        <td><span class="b b-ga">Answered in part</span> The mechanism is documented — <code>mcsConnectionId</code> per run. The matrix orchestration and the persona tagging are yours to build (§07).</td></tr>
+      <tr><td><strong>How should release approval workflows operate?</strong></td>
+        <td><span class="b b-cust">Decision</span> Power Platform Pipelines approvals, or GitHub/Azure DevOps environment approvals. Recommendation: automated gate for the objective thresholds, human approval only for documented exceptions.</td></tr>
+      <tr><td><strong>What is the blast radius of the 89-day retention?</strong></td>
+        <td><span class="b b-ga">Answered</span> Results disappear from Copilot Studio after 89 days. Without Phase 3, year-over-year trend and audit evidence do not exist.</td></tr>
+      <tr><td><strong>Does any of this depend on the new experience or GitHub Copilot harness?</strong></td>
+        <td><span class="b b-std">Standard harness</span> No. Every Microsoft Learn article cited for agent evaluation states it describes features used in agents or agent flows powered by the <strong>standard harness</strong>.</td></tr>
+      <tr><td><strong>Anything excluded?</strong></td>
+        <td><span class="b b-ga">Answered</span> Agent evaluation does not currently support Fabric data agents. GCC environments have additional limits (no user profile on test sets, no similarity method) — not applicable here, but relevant if a sovereign-cloud environment is ever in scope.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<!-- ============ 16 ============ -->
+<section id="s16">
+  <h2><span class="sn">16 — Next steps</span>The first ninety days</h2>
+  <ol class="steps">
+    <li><h4>Inventory current agents</h4><p>Name, owner, environment, business criticality, and whether
+      any test set exists today. The agents with none are the finding.</p></li>
+    <li><h4>Define the evaluation taxonomy</h4><p>Agree the six categories (§06), the six suites (§10),
+      the naming convention, and the personas — before anyone writes a test case.</p></li>
+    <li><h4>Build the initial regression suite</h4><p>One tier-1 agent. Generate a baseline, harden it
+      with real questions, and get it to a stable, meaningful pass rate.</p></li>
+    <li><h4>Pilot CI/CD integration</h4><p>App registration with the Power Platform API scope, an
+      unattended run, and a gate that can fail a build in a non-production pipeline.</p></li>
+    <li><h4>Stand up the reporting layer</h4><p>Dataverse schema, automated persistence, and the first
+      Power BI page — agent health and trend.</p></li>
+    <li><h4>Establish the governance model</h4><p>Published thresholds by criticality tier, a named
+      quality owner per agent, an exception path, and the review cadence.</p></li>
+  </ol>
+
+  <div class="note ok"><strong>Where this lands.</strong> Individual agent testing becomes an enterprise
+  AI Quality Engineering practice: every agent measured the same way, every release gated on evidence,
+  and every quality claim backed by a run ID.</div>
+</section>
+
+<!-- ============ SP ============ -->
+<section id="sSP">
+  <h2><span class="sn">Starter pack — Head start</span>A working implementation, not just a design</h2>
+  <p class="sub">Everything in sections 08 to 12 marked <span class="b b-cust">Customer-built</span> is
+  implemented and runnable in the companion starter pack. Clone it, point it at an agent, and you have
+  a gated evaluation pipeline the same day.</p>
+
+  <div class="note"><strong>Reference implementation — logic tested, live shapes pending.</strong> The
+  runner was executed end to end against a <em>mock</em> of the documented API surface: persona matrix,
+  parallel runs, polling, Dataverse persistence, gate evaluation and both exit paths. The YAML workflows
+  parse and the CSV seeds match the documented import format. Response field names and status tokens are
+  written defensively but not yet verified against a live tenant — a one-time shakeout closes that gap.</div>
+
+  <div class="tw"><table>
+    <thead><tr><th>Component</th><th>What it gives you</th><th>Maps to</th></tr></thead>
+    <tbody>
+      <tr><td><code>evaluate.py</code> + <code>eval_runner/</code></td>
+        <td>Python runner over the <code>makerevaluation</code> operations — resolves test sets by name, runs the agent × suite × persona matrix in parallel, polls to terminal state, flattens results, applies the gate, exits with a pipeline-usable code</td>
+        <td>§09 Trigger surface</td></tr>
+      <tr><td><code>dataverse/</code></td>
+        <td><code>schema.json</code> plus an idempotent provisioner that creates the publisher, solution, tables, columns and relationship via the Dataverse Web API. <code>--dry-run</code> supported</td>
+        <td>§11 Results repository</td></tr>
+      <tr><td><code>workflows/</code></td>
+        <td>GitHub Actions release gate (deploy → evaluate → promote on pass, with a job-summary table) and a scheduled drift-detection workflow</td>
+        <td>§09 Build + deploy</td></tr>
+      <tr><td><code>azure/</code></td>
+        <td>Azure DevOps equivalent with native JUnit test reporting — plus an honest account of what Azure is actually needed for</td>
+        <td>§09 Build + deploy</td></tr>
+      <tr><td><code>powerbi/</code></td>
+        <td>Power Query M for both tables and 25+ DAX measures: pass rate, drift, release readiness, persona divergence, failure clustering</td>
+        <td>§12 Reporting</td></tr>
+      <tr><td><code>testsets/</code></td>
+        <td>Seed CSVs in the documented import format, plus the Custom-method instructions and labels for negative security tests</td>
+        <td>§10 Test assets</td></tr>
+      <tr><td><code>config/agents.json</code></td>
+        <td>Agents, suites, personas and thresholds as data — adding an agent is a config change, not a code change</td>
+        <td>§07, §09</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The auth constraint that shapes the whole build</h3>
+  <div class="note warn"><strong>The Power Platform API grants delegated permissions only.</strong>
+  Microsoft's documented guidance for service principals is explicit: <em>"don't use application
+  permissions. Instead, after you create your app registration, assign it an RBAC role to grant scoped
+  permissions."</em> A service principal will receive a valid token and still get <strong>401/403</strong>
+  from the evaluation endpoints until that Power Platform RBAC role is assigned.
+  <br><br>
+  Practical consequence: prove the pipeline with <strong>delegated</strong> auth (device code) first,
+  then switch to a service principal once the RBAC role is in place. The starter pack supports four
+  modes — <code>device_code</code>, <code>interactive</code>, <code>azure_cli</code> and
+  <code>client_secret</code> — for exactly this reason.</div>
+
+  <h3>Why there is no pre-built solution .zip</h3>
+  <p>The most-requested artifact is a Power Platform solution file to import. Shipping one would be the
+  wrong call, for one concrete reason:</p>
+  <div class="note"><strong>A table's customisation prefix comes from the solution publisher and cannot
+  be changed after the table is created.</strong> A pre-baked solution would permanently stamp an
+  arbitrary prefix into your environment.</div>
+  <p>The provisioning script takes the prefix as an argument, so you own your naming from the first run.
+  Once the tables exist, export a real solution that carries <em>your</em> publisher, prefix and version
+  history:</p>
+  <div class="cw"><pre><code>python dataverse/provision_schema.py --url https://yourorg.crm.dynamics.com --prefix acme --dry-run
+python dataverse/provision_schema.py --url https://yourorg.crm.dynamics.com --prefix acme
+
+pac solution export --name CopilotStudioEvaluationFramework --managed false</code></pre><button class="copy" type="button">Copy</button></div>
+  <p>That exported solution is a better ALM artifact than anything that could be shipped pre-built — and
+  the same reasoning applies to Power BI, which is why the pack ships M and DAX rather than a
+  <code>.pbit</code> with someone else's connection string baked in.</p>
+
+  <h3>Four design decisions worth carrying into your own build</h3>
+  <div class="grid g2">
+    <div class="card"><h4>Run the matrix in parallel</h4><p>The portal runs one test set at a time; the
+      API does not. A four-persona security matrix finishes in the time of its slowest single run.</p></div>
+    <div class="card"><h4>Never blend unlike metrics</h4><p>Gate on each test method independently.
+      A blended 60% could be accurate-but-rambling or polished-but-wrong.</p></div>
+    <div class="card"><h4><code>Invalid</code> is not <code>fail</code></h4><p>Invalid means the test case
+      had no expected answer — a suite defect, not a regression. Excluded from pass rates, tracked with
+      its own threshold.</p></div>
+    <div class="card"><h4>Surface unknowns, never guess</h4><p>Status tokens and run states are not
+      exhaustively documented. Unknown states are treated as terminal (fails safe) and unrecognised
+      statuses are printed rather than silently scored.</p></div>
+  </div>
+
+  <h3>First 45 minutes</h3>
+  <ol class="steps">
+    <li><h4>Install and configure</h4><p><code>pip install -r requirements.txt</code>, copy
+      <code>.env.template</code> to <code>.env</code>, and fill in the tenant, client, environment and
+      bot IDs (Copilot Studio → Settings → Advanced → Details).</p></li>
+    <li><h4>Prove auth works before anything else</h4>
+      <div class="cw"><pre><code>python evaluate.py --list-test-sets sample-agent</code></pre><button class="copy" type="button">Copy</button></div>
+      <p>This one command separates an auth problem from an ID problem from a naming problem. Do not
+      continue until it returns your test sets.</p></li>
+    <li><h4>Run the smallest useful suite</h4><p><code>python evaluate.py --suite smoke</code> — then
+      read the clustered failure reasons before changing anything.</p></li>
+    <li><h4>Provision the results repository</h4><p>Dry-run the provisioner, then run it with your own
+      prefix, and export the solution.</p></li>
+    <li><h4>Schedule before you gate</h4><p>Run <code>scheduled-eval.yml</code> nightly for a week or
+      two. A gate built on an untrusted signal gets switched off the first time it blocks a release for
+      the wrong reason.</p></li>
+  </ol>
+
+  <div class="srcs"><div class="t">Sources</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/power-platform/admin/programmability-authentication-v2">Power Platform API: Authentication</a> — delegated-only constraint, RBAC guidance, token flows</li>
+    <li><a href="https://learn.microsoft.com/en-us/power-apps/developer/data-platform/webapi/create-update-entity-definitions-using-web-api">Create and update table definitions using the Web API</a> — prefix immutability, required properties</li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a></li>
+  </ul></div>
+</section>
+
+<!-- ============ A ============ -->
+<section id="sA">
+  <h2><span class="sn">Appendix — Reference</span>Constraints, limits and source list</h2>
+
+  <h3>Documented limits worth designing around</h3>
+  <div class="tw"><table>
+    <thead><tr><th>Limit</th><th>Value</th></tr></thead>
+    <tbody>
+      <tr><td>Test cases per single-response test set</td><td>100</td></tr>
+      <tr><td>Questions per import file</td><td>100</td></tr>
+      <tr><td>Characters per question</td><td>1,000 (including spaces)</td></tr>
+      <tr><td>Import file format</td><td><code>.csv</code> or <code>.txt</code>; headings <code>Question</code>, <code>Expected response</code>, in that order</td></tr>
+      <tr><td>Knowledge file size for test generation</td><td>Up to 5 MB</td></tr>
+      <tr><td>SharePoint as a generation source</td><td>Individual files only — folders not supported</td></tr>
+      <tr><td>Result retention in Copilot Studio</td><td>89 days</td></tr>
+      <tr><td>Content safety severity range</td><td>Level 0 (strictest) to level 7 (most permissive)</td></tr>
+      <tr><td>Compare meaning default pass score</td><td>50</td></tr>
+      <tr><td>Text similarity scoring</td><td>Cosine similarity, 0 to 1</td></tr>
+      <tr><td>Quick question set output</td><td>10 questions</td></tr>
+      <tr><td>Not supported</td><td>Fabric data agents</td></tr>
+      <tr><td>API version used throughout</td><td><code>2024-10-01</code></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Full source list</h3>
+  <p>Every factual claim in this document traces to one of the following public sources.</p>
+  <div class="srcs"><div class="t">Microsoft Learn — Copilot Studio agent evaluation</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-intro">About agent evaluation</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-overview">Choose evaluation methods</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-create">Create a single response test set</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-rest-api">Automate agent evaluations with Power Platform API</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/analytics-agent-evaluation-automate-tools">Trigger agent evaluations with connectors</a></li>
+  </ul></div>
+  <div class="srcs"><div class="t">Microsoft Learn — evaluation practice and ALM</div><ul>
+    <li><a href="https://learn.microsoft.com/en-us/microsoft-365/copilot/extensibility/evaluation-overview">Agent evaluation overview (Microsoft 365 Copilot extensibility)</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/power-platform/alm/devops-github-actions">GitHub Actions for Microsoft Power Platform</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/power-platform/alm/tutorials/github-actions-deploy">Tutorial: Automate solution deployment using GitHub Actions</a></li>
+    <li><a href="https://learn.microsoft.com/en-us/training/modules/evaluate-publish-manage-agents-copilot-studio/">Training: Evaluate, publish, and manage agents in Microsoft Copilot Studio</a></li>
+  </ul></div>
+  <div class="srcs"><div class="t">Microsoft blogs and repositories</div><ul>
+    <li><a href="https://www.microsoft.com/en-us/microsoft-copilot/blog/copilot-studio/how-to-evaluate-ai-agents/">How to evaluate AI agents in Microsoft Copilot Studio</a> — Microsoft Copilot Blog</li>
+    <li><a href="https://www.microsoft.com/en-us/microsoft-copilot/blog/copilot-studio/build-smarter-test-smarter-agent-evaluation-in-microsoft-copilot-studio/">Build smarter, test smarter: Agent Evaluation in Microsoft Copilot Studio</a> — Microsoft Copilot Blog</li>
+    <li><a href="https://github.com/microsoft/powerplatform-actions">microsoft/powerplatform-actions</a></li>
+    <li><a href="https://microsoft.github.io/mcs-labs/labs/core-concepts-analytics-evaluations/">Microsoft Copilot Agents Labs — Monitor Performance and Evaluate Agent Quality</a></li>
+  </ul></div>
+
+  <div class="note"><strong>Currency.</strong> Agent evaluation is a preview capability and the
+  documentation changes as it matures — Microsoft notes that test methods are added over time. Re-check
+  the Learn articles above before committing an implementation date, and watch
+  <a href="https://learn.microsoft.com/en-us/microsoft-copilot-studio/whats-new">What's new in Microsoft Copilot Studio</a>.</div>
+</section>
+
+</main>
+
+<aside id="nav">
+  <div class="navhead">On this page</div>
+  <ul class="toc" id="toc">
+    <li class="grp">The case</li>
+    <li><a href="#s1"><span class="n">01</span> Executive summary</a></li>
+    <li><a href="#s2"><span class="n">02</span> Why it matters</a></li>
+    <li><a href="#s3"><span class="n">03</span> Requirements</a></li>
+    <li><a href="#s4"><span class="n">04</span> Maturity model</a></li>
+    <li class="grp">The capability</li>
+    <li><a href="#s5"><span class="n">05</span> Native capability</a></li>
+    <li><a href="#s6"><span class="n">06</span> Taxonomy</a></li>
+    <li><a href="#s7"><span class="n">07</span> Identity-aware evaluation</a></li>
+    <li class="grp">The build</li>
+    <li><a href="#s8"><span class="n">08</span> Architecture</a></li>
+    <li><a href="#s9"><span class="n">09</span> CI/CD integration</a></li>
+    <li><a href="#s10"><span class="n">10</span> Test assets</a></li>
+    <li><a href="#s11"><span class="n">11</span> Data model</a></li>
+    <li><a href="#s12"><span class="n">12</span> Reporting</a></li>
+    <li class="grp">The practice</li>
+    <li><a href="#s13"><span class="n">13</span> Operating model</a></li>
+    <li><a href="#s14"><span class="n">14</span> Recommended approach</a></li>
+    <li><a href="#s15"><span class="n">15</span> Open questions</a></li>
+    <li><a href="#s16"><span class="n">16</span> Next steps</a></li>
+    <li class="grp">Head start</li>
+    <li><a href="#sSP"><span class="n">SP</span> Starter pack</a></li>
+    <li class="grp">Reference</li>
+    <li><a href="#sA"><span class="n">A</span> Appendix &amp; sources</a></li>
+  </ul>
+</aside>
+</div>
+
+<footer>
+  <div>Built for agents powered by the Copilot Studio <strong>standard harness</strong>. Capability
+  status is marked inline: <span class="b b-ga">GA</span> <span class="b b-prev">Preview</span>
+  <span class="b b-cust">Customer-built</span>. All product behaviour is sourced from public Microsoft
+  documentation linked in the Appendix.</div>
+  <div style="margin-top:14px">This is a personal project. <strong>Not an official Microsoft
+  product</strong> — not supported by Microsoft and not official Microsoft guidance. Microsoft,
+  Copilot Studio, Power Platform, Dataverse, Power BI and Azure are trademarks of the Microsoft
+  group of companies. Agent evaluation is a <strong>preview</strong> capability; re-check the linked
+  Microsoft Learn articles before relying on any specific behaviour. Licensed MIT.</div>
+  <a class="backtop" href="#">↑ Back to top</a>
+</footer>
+
+<script>
+(function(){
+  var secs = Array.prototype.slice.call(document.querySelectorAll('section[id]'));
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var map = {};
+  links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+
+  // scroll spy
+  var obs = new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        links.forEach(function(a){ a.classList.remove('active'); });
+        var a = map[e.target.id];
+        if(a){ a.classList.add('active');
+          var box = a.getBoundingClientRect(), nav = document.getElementById('nav').getBoundingClientRect();
+          if(box.top < nav.top + 40 || box.bottom > nav.bottom - 40){
+            a.scrollIntoView({block:'nearest'});
+          }
+        }
+      }
+    });
+  }, {rootMargin:'-64px 0px -70% 0px', threshold:0});
+  secs.forEach(function(s){ obs.observe(s); });
+
+  // reading progress
+  var bar = document.getElementById('progress');
+  function prog(){
+    var h = document.documentElement;
+    var p = h.scrollTop / (h.scrollHeight - h.clientHeight || 1);
+    bar.style.width = Math.min(100, Math.max(0, p*100)) + '%';
+  }
+  document.addEventListener('scroll', prog, {passive:true}); prog();
+
+  // mobile nav
+  var nav = document.getElementById('nav'), tog = document.getElementById('navToggle');
+  tog.addEventListener('click', function(){ nav.classList.toggle('open'); });
+  nav.addEventListener('click', function(e){ if(e.target.tagName === 'A'){ nav.classList.remove('open'); }});
+
+  // theme
+  var tt = document.getElementById('themeToggle'), root = document.documentElement;
+  var saved = null;
+  try { saved = localStorage.getItem('eval-theme'); } catch(err){}
+  if(saved){ root.setAttribute('data-theme', saved); }
+  function sync(){ tt.textContent = root.getAttribute('data-theme') === 'light' ? 'Dark' : 'Light'; }
+  sync();
+  tt.addEventListener('click', function(){
+    var next = root.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+    root.setAttribute('data-theme', next);
+    try { localStorage.setItem('eval-theme', next); } catch(err){}
+    sync();
+  });
+
+  // copy buttons
+  Array.prototype.slice.call(document.querySelectorAll('.copy')).forEach(function(b){
+    b.addEventListener('click', function(){
+      var code = b.parentNode.querySelector('code');
+      if(!code) return;
+      var done = function(){ b.textContent = 'Copied'; setTimeout(function(){ b.textContent = 'Copy'; }, 1400); };
+      if(navigator.clipboard && navigator.clipboard.writeText){
+        navigator.clipboard.writeText(code.innerText).then(done, function(){});
+      }
+    });
+  });
+})();
+</script>
+</body>
+</html>
